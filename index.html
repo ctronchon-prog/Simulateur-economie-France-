@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette France 2027-2037</title>
+<meta name="description" content="Maquette de l'économie française : cochez les mesures d'un programme, lisez l'effet sur la croissance, l'emploi, le déficit et la dette jusqu'en 2037.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="accueil">
+<main class="cover">
+  <section class="band blue">
+    <a class="wordmark" href="index.html">Maquette France</a>
+    <div class="bandfoot">
+      <div class="big" aria-hidden="true">20<br>27</div>
+      <p>Juillet 2027&nbsp;: les premières mesures du programme s'appliquent.</p>
+    </div>
+  </section>
+  <section class="band white">
+    <nav class="covernav" aria-label="Pages du site">
+      <a href="programmes.html">Programmes</a>
+      <a href="comparer.html">Comparer</a>
+      <a href="methode.html">Méthode</a>
+    </nav>
+    <div class="pitch">
+      <h1>Dix ans d'économie française, programme par programme.</h1>
+      <p class="lead">Cochez un candidat, puis ses mesures une à une. Croissance, emploi, déficit, dette et revenus se recalculent aussitôt.</p>
+      <div class="cands" id="cover-progs">
+        <label class="cand"><input type="checkbox" checked disabled><span class="cn">La France insoumise</span><span class="ct">extrapolation</span></label>
+        <label class="cand"><input type="checkbox" checked disabled><span class="cn">Rassemblement national</span><span class="ct">extrapolation</span></label>
+        <label class="cand soon"><input type="checkbox" disabled><span class="cn">Autres candidats</span><span class="ct">à venir</span></label>
+      </div>
+      <div class="ctas">
+        <a class="cta" id="cover-cta" href="programmes.html">Lancer la simulation</a>
+        <a class="more" href="methode.html">Lire la méthode</a>
+      </div>
+      <p class="fine">Les programmes saisis sont des extrapolations, pas des chiffrages officiels.</p>
+    </div>
+  </section>
+  <section class="band red">
+    <p>Lecture en 2027, 2028, 2029, 2030, 2031, 2032 et 2037.</p>
+    <div class="bandfoot">
+      <div class="big" aria-hidden="true">20<br>37</div>
+      <p>2037&nbsp;: dix ans après, où en sont la dette, l'emploi et les revenus&nbsp;?</p>
+    </div>
+  </section>
+</main>
+<script src="js/moteur.js"></script>
+<script src="js/programmes.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
