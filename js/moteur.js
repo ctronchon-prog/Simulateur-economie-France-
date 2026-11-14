@@ -14,6 +14,9 @@ const D = {
   E0: 30600, Epub: 5800, LFshareU: 8.3,
   MSpriv: 930, MSpub: 270, Mixed: 140, CapInc: 400, Pens: 423, Ben: 190, RDB: 1900,
   netfac: 0.87, VAsnf: 1560, margin0: 31.5, EqW: 2000, cac0: 7800,
+  // lecture Keen : dette privée (% du PIB, 1er trimestre 2026), solde courant 2026 (% du PIB), impôts de production nets (% de la valeur ajoutée),
+  // taux moyen de la dette privée (%), part de la dette publique détenue par des non-résidents retenue comme point de repère (%)
+  dHh0: 58.8, dFirm0: 75.4, ca0: -0.6, prodTaxVA: 2.2, iPriv0: 3.0, nrRef: 55,
   // recettes 2026 (Md€) — total 1561 = 51,7 % du PIB
   R0: { tva: 215, ir: 98, csg: 160, cot: 465, is: 68, prod: 110, acc: 62, cap: 85, autres: 63, horspo: 235 },
   // dépenses 2026 par nature (Md€) — total 1724 = 57,1 % du PIB
@@ -171,8 +174,15 @@ const PARAMS = [
   ['optMkt', 'Scénario optimiste : nervosité des marchés', 0.75, 0.2, 1, 0.05, 'Fourchettes', 0, ''],
   ['euCap', 'Plafond européen de dépense primaire nette (%/an, valeur)', 1.2, 0, 4, 0.1, 'Europe', 0, 'Seuil d\'alerte, à ajuster selon la trajectoire négociée'],
   ['sanctionSpread', 'Sanctions : hausse de l\'écart de taux (pts)', 0.25, 0, 1, 0.05, 'Europe', 0, ''],
-  ['sanctionFine', 'Sanctions : amende (% du PIB par an)', 0.1, 0, 0.5, 0.05, 'Europe', 0, '']
-].map(a => ({ id: a[0], label: a[1], def: a[2], min: a[3], max: a[4], step: a[5], group: a[6], simple: !!a[7], help: a[8] }));
+  ['sanctionFine', 'Sanctions : amende (% du PIB par an)', 0.1, 0, 0.5, 0.05, 'Europe', 0, ''],
+  ['nrShare', 'Part de la dette publique détenue par des non-résidents (%)', 55, 0, 90, 1, 'Taux et finance', 1, 'Dette négociable de l\'État : 57,5 % début 2026, 70 % en 2010. Règle les intérêts versés à l\'étranger et l\'ampleur du choc « attaque des marchés »'],
+  ['credOn', 'Le crédit agit sur la demande', 0, 0, 1, 1, 'Dette privée et crédit', 0, '', 1],
+  ['credLh', 'Part du logement neuf financée par emprunt', 0.8, 0, 1, 0.05, 'Dette privée et crédit', 0, 'Sert à suivre la dette des ménages'],
+  ['credLf', 'Part de l\'investissement des entreprises financée par emprunt', 0.4, 0, 1, 0.05, 'Dette privée et crédit', 0, 'Sert à suivre la dette des entreprises'],
+  ['credRate', 'Crédit nouveau en moins pour 1 point de taux en plus (% de l\'encours, par an)', 0.5, 0, 2, 0.05, 'Dette privée et crédit', 0, 'Canal bancaire. N\'agit que si le crédit est activé'],
+  ['credDem', 'Part du crédit supplémentaire dépensée en biens et services neufs', 0.5, 0, 1, 0.05, 'Dette privée et crédit', 0, 'Le reste achète des actifs existants. N\'agit que si le crédit est activé'],
+  ['credServ', 'Dépense en moins par euro d\'intérêts privés en plus', 0.3, 0, 1, 0.05, 'Dette privée et crédit', 0, 'Poids de la charge de la dette privée. N\'agit que si le crédit est activé']
+].map(a => ({ id: a[0], label: a[1], def: a[2], min: a[3], max: a[4], step: a[5], group: a[6], simple: !!a[7], help: a[8], sw: !!a[9] }));
 const defaultParams = () => { const p = {}; PARAMS.forEach(x => p[x.id] = x.def); return p; };
 
 /* ---------- Trajectoire de référence ---------- */
@@ -475,7 +485,7 @@ function assInfo(m) {
 const decay = (I, k, t0, v, r, n) => { for (let t = t0, x = v; t < N && (n === undefined || t < t0 + n); t++, x *= r) I[k][t] += x; };
 const SHOCKS = [
   { id: 'energie', nom: 'Choc énergétique', desc: 'Envolée du pétrole et du gaz', lv: ['+25 %', '+50 %', '+100 %'], fx: (I, t, i) => { decay(I, 'pen', t, [25, 50, 100][i], 0.6); decay(I, 'wd', t, -[0.3, 0.7, 1.5][i], 0.5); decay(I, 'conf', t, [0.2, 0.4, 0.8][i], 0.5); } },
-  { id: 'dette', nom: 'Attaque des marchés sur la dette', desc: 'Envolée de l\'écart de taux avec l\'Allemagne', lv: ['+1 pt', '+2 pts', '+4 pts'], fx: (I, t, i) => { decay(I, 'spread', t, [1, 2, 4][i], 0.7); decay(I, 'cspread', t, [0.5, 1, 2][i], 0.6); decay(I, 'conf', t, [0.3, 0.7, 1.5][i], 0.6); decay(I, 'eq', t, -[8, 15, 25][i], 0.6); } },
+  { id: 'dette', nom: 'Attaque des marchés sur la dette', desc: 'Envolée de l\'écart de taux avec l\'Allemagne. Ampleur indiquée pour 55 % de dette détenue à l\'étranger ; elle suit ce réglage', lv: ['+1 pt', '+2 pts', '+4 pts'], fx: (I, t, i, P) => { const k = P ? 0.5 + 0.5 * P.nrShare / D.nrRef : 1; decay(I, 'spread', t, [1, 2, 4][i] * k, 0.7); decay(I, 'cspread', t, [0.5, 1, 2][i], 0.6); decay(I, 'conf', t, [0.3, 0.7, 1.5][i], 0.6); decay(I, 'eq', t, -[8, 15, 25][i], 0.6); } },
   { id: 'panique', nom: 'Panique financière', desc: 'Krach du CAC 40 et gel du crédit', lv: ['−20 %', '−35 %', '−50 %'], fx: (I, t, i) => { decay(I, 'eq', t, -[20, 35, 50][i], 0.6); decay(I, 'cspread', t, [1, 2, 3.5][i], 0.5); decay(I, 'conf', t, [0.5, 1, 2][i], 0.5); decay(I, 'ieshock', t, -[2, 4, 7][i], 0.4); decay(I, 'spread', t, [0.2, 0.4, 0.8][i], 0.6); decay(I, 'wd', t, -[0.5, 1.5, 3][i], 0.5); } },
   { id: 'recession', nom: 'Récession mondiale', desc: 'Chute de la demande adressée à la France', lv: ['−3 %', '−6 %', '−10 %'], fx: (I, t, i) => { decay(I, 'wd', t, -[3, 6, 10][i], 0.55); decay(I, 'eq', t, -[10, 20, 35][i], 0.5); decay(I, 'pen', t, -[10, 20, 30][i], 0.5); decay(I, 'conf', t, [0.3, 0.6, 1.2][i], 0.5); decay(I, 'ieshock', t, -[1, 2, 4][i], 0.5); } },
   { id: 'commerce', nom: 'Guerre commerciale', desc: 'Barrières douanières contre les exportations', lv: ['Modérée', 'Forte', 'Totale'], fx: (I, t, i) => { decay(I, 'xshock', t, -[2, 4, 8][i], 0.92); decay(I, 'tariff', t, [2, 4, 8][i], 0.92); decay(I, 'ieshock', t, -[1, 2, 3.5][i], 0.6); decay(I, 'eq', t, -[4, 8, 15][i], 0.6); } },
@@ -549,7 +559,7 @@ function buildImpulses(P, B, prog, shocks, pilot, scen) {
       lev.fx(A, u, P, { idx: B.Yn[t] / B.Yn[1], r: sf * ratio, sup: r0 !== null ? r0 : F.sup });
     }
   });
-  (shocks || []).forEach(s => { if (!s.on) return; const def = SHOCKS.find(x => x.id === s.id); const t = Math.max(1, (s.year || 2028) - 2026); if (def && t < N) def.fx(I, t, s.level || 0); });
+  (shocks || []).forEach(s => { if (!s.on) return; const def = SHOCKS.find(x => x.id === s.id); const t = Math.max(1, (s.year || 2028) - 2026); if (def && t < N) def.fx(I, t, s.level || 0, P); });
   if (pilot) PILOT.forEach(p => {
     const v = pilot[p.id]; if (v === undefined || v === null) return;
     const dv = p.abs ? v - P[p.abs] : v; if (!dv) return;
@@ -564,7 +574,7 @@ function buildImpulses(P, B, prog, shocks, pilot, scen) {
 function simulate(P, B, I, opt) {
   opt = opt || {};
   const R = { years: YEARS };
-  const V = ['y', 'gdpG', 'gdpN', 'infl', 'u', 'empK', 'solde', 'def', 'debt', 'debtMd', 'int', 'intPct', 'prim', 'pa', 'paLvl', 'bal', 's80', 'oat', 'spread', 'ecb', 'cac', 'wageG', 'margin', 'potG', 'gapV', 'po', 'depPct', 'recMd', 'depMd', 'cG', 'ieG', 'xG', 'mG', 'ystar', 'p', 'dU', 'dE', 'rdbA', 'rdbR', 'tourVa', 'tourEmp', 'sanction', 'npe', 'xRev', 'xSp', 'effort', 'pen'];
+  const V = ['y', 'gdpG', 'gdpN', 'infl', 'u', 'empK', 'solde', 'def', 'debt', 'debtMd', 'int', 'intPct', 'prim', 'pa', 'paLvl', 'bal', 's80', 'oat', 'spread', 'ecb', 'cac', 'wageG', 'margin', 'potG', 'gapV', 'po', 'depPct', 'recMd', 'depMd', 'cG', 'ieG', 'xG', 'mG', 'ystar', 'p', 'dU', 'dE', 'rdbA', 'rdbR', 'tourVa', 'tourEmp', 'sanction', 'npe', 'xRev', 'xSp', 'effort', 'pen', 'ca', 'intExt', 'sfHh', 'sfFirm', 'sfRow', 'wsh', 'dHh', 'dFirm', 'dPriv', 'credFlow'];
   V.forEach(k => R[k] = Z());
   R.dec = D.dec.rdb.map(() => Z()); R.sub = {}; ['etat', 'ct', 'secu'].forEach(k => R.sub[k] = { dep: Z(), rec: Z(), solde: Z() });
   R.br = {}; BRANCHES.forEach(b => R.br[b.id] = { dep: Z(), solde: Z() });
@@ -573,7 +583,10 @@ function simulate(P, B, I, opt) {
   R.size = {}; SIZES.forEach(s => R.size[s.id] = { va: Z(), emp: Z(), inv: Z(), margin: Z() });
   R.trv = {}; TRANSV.forEach(s => R.trv[s.id] = { va: Z(), emp: Z(), inv: Z() });
   R.alerts = YEARS.map(() => []);
-  const S = { cD: new Array(10).fill(0), cO: 0, penSm: 0, rr: 0, rrl: 0, c: 0, ie: 0, ih: 0, x: 0, p: 0, pht: 0, pEc: 0, pIc: 0, w: 0, e: 0, jd: 0, k: 0, kpub: 0, hyst: 0, y: 0, ym: 0, dpi: 0, iavg: 0, Dd: 0, debtR: 0, defR: 0, pm: 0, comp: 0, ebe: 0, ystar: 0, sanc: 0, eduC: 0, pPrev: 0, secE: {}, sizeE: {}, lvlPa: 1, tfpE: 0, prevDef: null, prevPrev: null, npePrev: B.dep[0] - B.int[0] };
+  const S = { cD: new Array(10).fill(0), cO: 0, penSm: 0, rr: 0, rrl: 0, c: 0, ie: 0, ih: 0, x: 0, p: 0, pht: 0, pEc: 0, pIc: 0, w: 0, e: 0, jd: 0, k: 0, kpub: 0, hyst: 0, y: 0, ym: 0, dpi: 0, iavg: 0, Dd: 0, debtR: 0, defR: 0, pm: 0, comp: 0, ebe: 0, ystar: 0, sanc: 0, eduC: 0, pPrev: 0, secE: {}, sizeE: {}, lvlPa: 1, tfpE: 0, DhDev: 0, DfDev: 0, rH: 0, rF: 0, prevDef: null, prevPrev: null, npePrev: B.dep[0] - B.int[0] };
+  // lecture Keen : soldes sectoriels et dette privée
+  const nrS = P.nrShare / 100, hhB0 = (D.RDB / D.Y0 - D.sh.C - D.sh.Ih) * 100;
+  const otherInc = D.ca0 - B.bal[0] + nrS * B.int[0] / B.Yn[0] * 100; // revenus et transferts hors intérêts publics, % du PIB, calé sur 2026
   const fill0 = () => {
     const t = 0; R.gdpG[0] = B.g[0]; R.gdpN[0] = B.Yn[0]; R.infl[0] = B.pi[0]; R.u[0] = B.u[0]; R.empK[0] = B.E[0];
     R.def[0] = B.def[0] / B.Yn[0] * 100; R.solde[0] = -R.def[0]; R.debt[0] = B.D[0] / B.Yn[0] * 100; R.debtMd[0] = B.D[0]; R.int[0] = B.int[0]; R.intPct[0] = B.int[0] / B.Yn[0] * 100;
@@ -585,6 +598,8 @@ function simulate(P, B, I, opt) {
     Object.keys(D.R0).forEach(k => R.recI[k][0] = B.recI[k][0]); Object.keys(D.S0).forEach(k => R.depN[k][0] = B.depN[k][0]);
     SECTORS.forEach(s => R.sec[s.id].lvl[0] = s.va / 100 * B.Yr[0] * 0.9);
     SIZES.forEach(s => R.size[s.id].margin[0] = s.m0);
+    R.intExt[0] = nrS * B.int[0]; R.ca[0] = D.ca0; R.sfHh[0] = hhB0; R.sfRow[0] = -D.ca0; R.sfFirm[0] = D.ca0 - R.solde[0] - hhB0;
+    R.wsh[0] = 100 - D.prodTaxVA - D.margin0; R.dHh[0] = D.dHh0; R.dFirm[0] = D.dFirm0; R.dPriv[0] = D.dHh0 + D.dFirm0;
   };
   fill0();
   const Epriv0 = D.E0 - D.Epub;
@@ -614,6 +629,12 @@ function simulate(P, B, I, opt) {
     const cDn = new Array(10).fill(0); let cOth = 0;
     const jdTarget = I.jobs[t]; const jd = S.jd + 0.45 * (jdTarget - S.jd);
     const eSupPct = P.supplyDirect * 0.67 * lfs + 0, ySup = P.supplyDirect * (0.67 * lfs * 0.8 + tfp * 0.5);
+    // crédit : encours de référence, canal bancaire, charge de la dette privée (nuls si le crédit n'est pas activé)
+    const cr = P.credOn ? 1 : 0, DhB = D.dHh0 / 100 * B.Yn[t - 1], DfB = D.dFirm0 / 100 * B.Yn[t - 1];
+    const aH = -cr * P.credRate / 100 * lend * DhB, aF = -cr * P.credRate / 100 * lend * DfB;
+    const rH = S.rH + 0.15 * (lend - S.rH), rF = S.rF + 0.35 * (lend - S.rF);
+    const svH = cr * (rH / 100 * DhB + D.iPriv0 / 100 * S.DhDev), svF = cr * (rF / 100 * DfB + D.iPriv0 / 100 * S.DfDev);
+    const crC = (0.3 * P.credDem * aH - P.credServ * svH) / B.Pgdp[t], crIh = 0.7 * P.credDem * aH / B.Pgdp[t], crIe = (P.credDem * aF - P.credServ * svF) / B.Pgdp[t];
     let y = S.y, ym = S.ym, c = S.c, ie = S.ie, ih = S.ih, x = S.x, e = S.e, w = S.w, p = S.p, pht = S.pht, dpi = 0, dw = 0, du = 0, dE = 0, margin = 0, eq = 0, dM = 0, dX = 0, dIe = 0, dIh = 0, hhD = [], rdbrTot = 0, dWages = 0, dPens = 0, dBen = 0, dCap = 0, dMixed = 0, dIR = 0, dCSG = 0, ePrivK = 0, lfK = 0, MSdev = 0, comp = 0, ystarNow = S.ystar, rdbA = 0, rdbR = 0, pD = [];
     for (let it = 0; it < 80; it++) {
       // Emploi
@@ -666,11 +687,11 @@ function simulate(P, B, I, opt) {
       const core = dpi - dpE - dpInd; const rr = 0.5 * (lend - 0.3 * core) + 0.5 * S.rr;
       const cOtg = I.csave[t] / nom + Cb * (-P.sigC * rr - P.precaution * du - I.conf[t] * 1.2 + I.cshock[t]) / 100 + P.wealth * D.EqW * eq / 100;
       cOth = P.lamC * cOtg + (1 - P.lamC) * S.cO * cgr;
-      c = cInc + cOth;
+      c = cInc + cOth + crC;
       // Investissement
       ie = P.rhoI * S.ie + P.kappa * (P.acc1 * ym - (P.acc1 - (1 - P.rhoI)) * S.ym) - P.aR * rr + P.aProf * margin * (1 - P.rhoI) + (I.ieff[t] - P.rhoI * I.ieff[t - 1]) + I.ieshock[t];
       ih = 0.4 * S.ih + 0.5 * (rdbrTot / D.RDB * 100) - P.hR * (0.5 * (rl - 0.3 * core) + 0.5 * S.rrl) + I.ihshock[t];
-      dIe = ie / 100 * B.Ie[t]; dIh = ih / 100 * B.Ih[t];
+      dIe = ie / 100 * B.Ie[t] + crIe; dIh = ih / 100 * B.Ih[t] + crIh;
       // Extérieur
       comp = 0.7 * pht + 0.45 * eur;
       x = P.xWd * wd - P.epsX * (0.5 * comp + 0.5 * S.comp) + I.xshock[t] - 0.3 * I.tariff[t] * (I.tariff[t] > 0 ? 1 : 0) * (opt.noRetal ? 0 : 1) + 0.25 * I.tour[t] * 0.07;
@@ -718,7 +739,7 @@ function simulate(P, B, I, opt) {
     const Yn = B.Yn[t] * (1 + y / 100) * (1 + pgdp / 100);
     const defMd = B.def[t] + dDef, debtMd = B.D[t] + Dd;
     // ----- Potentiel
-    const k = S.k * 0.93 + 0.07 * ie - I.kdes[t];
+    const k = S.k * 0.93 + 0.07 * (ie + crIe / B.Ie[t] * 100) - I.kdes[t];
     const kpub = S.kpub * 0.97 + dIg / (0.9 * Yb) * 100 - I.kdes[t] * 0.5;
     const hyst = S.hyst + P.hyst * (y - S.ystar) * 0.5;
     const ystar = 0.33 * k + 0.67 * (lfs - nairu + hrs) + tfp + P.kpubElas * kpub + hyst;
@@ -741,6 +762,14 @@ function simulate(P, B, I, opt) {
     R.ecb[t] = B.ecb[t] + ecbDev; R.spread[t] = P.spreadBase + spreadDev; R.oat[t] = B.oat[t] + rl;
     R.cac[t] = B.cac[t] * (1 + eq / 100) * (1 + pgdp / 100);
     R.wageG[t] = B.wg[t] + dw; R.margin[t] = D.margin0 + margin;
+    // lecture Keen : part des salaires, solde courant, soldes sectoriels, dette privée
+    R.wsh[t] = 100 - D.prodTaxVA - R.margin[t];
+    R.intExt[t] = nrS * R.int[t]; R.ca[t] = R.bal[t] + otherInc - R.intExt[t] / Yn * 100;
+    R.sfHh[t] = hhB0 + (rdbrTot - c - dIh) / Yb * 100; R.sfRow[t] = -R.ca[t]; R.sfFirm[t] = R.ca[t] - R.solde[t] - R.sfHh[t];
+    const fH = P.credLh * (dIh - crIh) * B.Pgdp[t] + aH, fF = P.credLf * (dIe - crIe) * B.Pgdp[t] + aF;
+    const DhDev = S.DhDev + fH, DfDev = S.DfDev + fF;
+    R.dHh[t] = (D.dHh0 / 100 * B.Yn[t] + DhDev) / Yn * 100; R.dFirm[t] = (D.dFirm0 / 100 * B.Yn[t] + DfDev) / Yn * 100; R.dPriv[t] = R.dHh[t] + R.dFirm[t];
+    R.credFlow[t] = (fH + fF) / Yn * 100;
     R.ystar[t] = ystar; R.pen[t] = B.pen[t] * (1 + I.pen[t] / 100); R.potG[t] = ((1 + B.gpot[t] / 100) * (1 + ystar / 100) / (1 + S.ystar / 100) - 1) * 100; R.gapV[t] = B.gap[t] + y - ystar;
     R.cG[t] = ((B.C[t] + c) / prev.C - 1) * 100; R.ieG[t] = ((B.Ie[t] + dIe) / prev.Ie - 1) * 100;
     R.xG[t] = ((B.X[t] + dX) / prev.X - 1) * 100; R.mG[t] = ((B.M[t] + dM) / prev.M - 1) * 100;
@@ -825,6 +854,7 @@ function simulate(P, B, I, opt) {
     if (S.sanc) { al.push({ lvl: 'crit', txt: 'Sanctions européennes appliquées : amende et hausse de l\'écart de taux' }); R.sanction[t] = 1; }
     // ----- État suivant
     S.sanc = sancNext; S.cD = cDn.slice(); S.cO = cOth; S.c = c; S.ie = ie; S.ih = ih; S.x = x; S.p = p; S.pht = pht; S.pEc += dpE; S.w = w; S.e = e; S.jd = jd; S.k = k; S.kpub = kpub; S.hyst = hyst;
+    S.DhDev = DhDev; S.DfDev = DfDev; S.rH = rH; S.rF = rF;
     S.y = y; S.ym = ym; S.dpi = dpi; S.iavg = iavgDev; S.Dd = Dd; S.debtR = R.debt[t] - B.D[t] / B.Yn[t] * 100; S.defR = R.def[t] - B.def[t] / B.Yn[t] * 100;
     S.rr = lend - 0.3 * (dpi - dpE - dpInd); S.rrl = rl - 0.3 * (dpi - dpE - dpInd); S.pm = pm; S.comp = comp; S.ebe = ebe; S.ystar = ystar; S.tfpE = tfp;
     prev = { C: B.C[t] + c, Ie: B.Ie[t] + dIe, X: B.X[t] + dX, M: B.M[t] + dM, Yr, paDev };
