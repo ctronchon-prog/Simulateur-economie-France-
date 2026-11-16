@@ -16,6 +16,8 @@ const uid = () => 'p' + Math.random().toString(36).slice(2, 9);
 
 /* ---------- Variables affichables ---------- */
 const VARS = [
+  { id: 'gdpR', nom: 'PIB, en milliards d\'euros de 2026', court: 'PIB', unit: 'Md€ de 2026', dec: 0, f: (R, t) => RES.B.Yr[t] * (1 + R.y[t] / 100) },
+  { id: 'gdpN', nom: 'PIB, en milliards d\'euros courants (inflation comprise)', unit: 'Md€', dec: 0 },
   { id: 'gdpG', nom: 'Croissance du PIB', unit: '%', dec: 1, kpi: 1 },
   { id: 'gdpIdx', nom: 'PIB en volume (2026 = 100)', unit: '', dec: 1, f: (R, t) => R._idx[t] },
   { id: 'u', nom: 'Taux de chômage', unit: '%', dec: 1, kpi: 1 },
@@ -80,14 +82,15 @@ const defaultProgs = () => { const ex = PG.exampleProgs(); return [ex[2], ex[3],
 const defaultPilot = P => { const p = { from: {} }; E.PILOT.forEach(k => { p[k.id] = k.abs ? P[k.abs] : k.def; p.from[k.id] = 2028; }); return p; };
 const defaultState = () => {
   const P = E.defaultParams();
-  return { v: 6, progV: 2, tab: PAGE, horizon: 2030, shown: ['lfi', 'rn'], chartVar: 'gdpG', chartMode: 'niveau', band: true, tableView: false,
-    detailTab: 'finances', detailScen: 'lfi', secMode: 'va', programmes: defaultProgs(), openProg: 'lfi', asideVar: 'debt',
+  return { v: 6, progV: 3, tab: PAGE, horizon: 2030, shown: ['lfi', 'rn'], chartVar: 'gdpR', chartMode: 'niveau', band: true, tableView: false,
+    detailTab: 'finances', detailScen: 'lfi', secMode: 'va', programmes: defaultProgs(), openProg: 'lfi', asideVar: 'gdpR',
     shocks: E.SHOCKS.map(s => ({ id: s.id, on: false, level: 1, year: 2028 })), pilot: defaultPilot(P), sanctions: false, params: P, mode: 'simple' };
 };
 let state = defaultState();
 try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw); if (s && s.v === 6) { state = merge(defaultState(), s);
     if (!s.progV) { let at = state.programmes.findIndex(p => p.id === 'exA' || p.id === 'exB'); if (at < 0) at = state.programmes.length;
-      ADDED.forEach(id => { if (!state.programmes.some(p => p.id === id)) state.programmes.splice(at++, 0, ORIGIN[id]()); }); state.progV = 2; } } } } catch (e) { }
+      ADDED.forEach(id => { if (!state.programmes.some(p => p.id === id)) state.programmes.splice(at++, 0, ORIGIN[id]()); }); state.progV = 2; }
+    if ((state.progV || 1) < 3) { state.chartVar = 'gdpR'; state.asideVar = 'gdpR'; state.progV = 3; } } } } catch (e) { }
 state.tab = PAGE;
 function merge(def, s) {
   const o = Object.assign({}, def, s);
@@ -111,10 +114,14 @@ function loadSnapshot(s) {
 let RES = { ref: null, env: null, progs: {} };
 const envActive = () => state.shocks.some(s => s.on) || E.PILOT.some(k => { const v = state.pilot[k.id]; return k.abs ? Math.abs(v - state.params[k.abs]) > 1e-9 : !!v; }) || state.sanctions;
 function addIdx(R) { R._idx = [100]; for (let t = 1; t < N; t++) R._idx[t] = R._idx[t - 1] * (1 + R.gdpG[t] / 100); return R; }
-function simProg(p, P, B, opt) { const o = {}; ['central', 'pess', 'opt'].forEach(s => o[s] = addIdx(E.simulate(P, B, E.buildImpulses(P, B, p, state.shocks, state.pilot, s), opt))); return o; }
+// cinq calculs par programme : le résultat central, deux rendements des mesures (pessimiste, optimiste), deux lectures du long terme (offre, demande)
+const SC = ['central', 'pess', 'opt', 'offre', 'dem'];
+function simProg(p, P, B, opt) { const o = {}; ['central', 'pess', 'opt'].forEach(s => o[s] = addIdx(E.simulate(P, B, E.buildImpulses(P, B, p, state.shocks, state.pilot, s), opt)));
+  [['offre', 0], ['dem', 1]].forEach(x => { const Q = Object.assign({}, P, { demLed: x[1] }); o[x[0]] = addIdx(E.simulate(Q, B, E.buildImpulses(Q, B, p, state.shocks, state.pilot, 'central'), opt)); }); return o; }
+const envl = (R, g) => { const v = SC.map(k => g(R[k] || R.central)); return [Math.min.apply(null, v), Math.max.apply(null, v)]; };
 function recompute() {
   const P = state.params, B = E.baseline(P), opt = { sanctions: state.sanctions };
-  RES.ref = addIdx(E.simulate(P, B, E.newImp(), {}));
+  RES.B = B; RES.ref = addIdx(E.simulate(P, B, E.newImp(), {}));
   RES.env = envActive() ? addIdx(E.simulate(P, B, E.buildImpulses(P, B, null, state.shocks, state.pilot, 'central'), opt)) : null;
   RES.progs = {};
   state.programmes.forEach(p => { RES.progs[p.id] = simProg(p, P, B, opt); });
@@ -126,7 +133,7 @@ function recomputeProg(id) {
   RES.progs[id] = simProg(p, state.params, E.baseline(state.params), { sanctions: state.sanctions }); persist();
 }
 const scenList = () => { const l = [{ id: 'ref', name: 'Référence', short: 'Réf.', color: 'var(--s0)', dash: true }]; if (RES.env) l.push({ id: 'env', name: 'Référence avec chocs', short: 'Réf. + chocs', color: 'var(--ink)', dash: true }); state.programmes.forEach((p, i) => l.push({ id: p.id, name: p.name || 'Programme', color: 'var(--s' + (i % 6 + 1) + ')' })); return l; };
-const getR = id => id === 'ref' ? { central: RES.ref, pess: RES.ref, opt: RES.ref } : id === 'env' ? { central: RES.env, pess: RES.env, opt: RES.env } : RES.progs[id];
+const getR = id => id === 'ref' ? { central: RES.ref } : id === 'env' ? { central: RES.env } : RES.progs[id];
 const shownList = () => scenList().filter(s => s.id === 'ref' || state.shown.includes(s.id));
 const swatch = s => '<i class="sw' + (s.dash ? ' dash' : '') + '" style="--c:' + s.color + ';background:' + s.color + '"></i>';
 
@@ -184,17 +191,17 @@ function renderSynthese() {
   const thead = '<thead><tr><th></th>' + shown.map(s => '<th><span class="hd" title="' + esc(s.name) + '">' + swatch(s) + '<span class="nm">' + esc(s.short || s.name) + '</span></span></th>').join('') + '</tr></thead>';
   const sect = x => '<tr class="sect"><th colspan="' + (shown.length + 1) + '">' + x + '</th></tr>';
   const rowK = (id, lab, signed) => { const k = VAR[id], F = signed || k.grp ? sgn : fmt; let r = '<tr><td>' + esc(lab || k.court || k.nom) + ' <span class="note">' + esc(k.unit) + '</span></td>';
-    shown.forEach(s => { const R = getR(s.id), c = val(R.central, id, t), ref = val(RES.ref, id, t), a = val(R.pess, id, t), b = val(R.opt, id, t);
-      const fork = Math.abs(a - b) > 0.5 * Math.pow(10, -k.dec) ? '<span class="d">' + F(Math.min(a, b), k.dec) + '<span class="a"> à </span>' + F(Math.max(a, b), k.dec) + '</span>' : '';
+    shown.forEach(s => { const R = getR(s.id), c = val(R.central, id, t), ref = val(RES.ref, id, t), a = val(R.offre || R.central, id, t), b = val(R.dem || R.central, id, t);
+      const fork = Math.abs(a - b) > 0.5 * Math.pow(10, -k.dec) ? '<span class="d">offre ' + F(a, k.dec) + ' · demande ' + F(b, k.dec) + '</span>' : '';
       if (k.grp) r += '<td>' + (s.id === 'ref' ? '<span class="v">–</span>' : '<span class="v">' + sgn(c, k.dec) + '</span><span class="d">' + sgn(grpEur(R.central, t, k.grp), 0) + ' €<span class="vs"> par ménage</span></span>' + fork) + '</td>';
       else r += '<td><span class="v">' + F(c, k.dec) + '</span>' + (s.id !== 'ref' ? '<span class="d">' + sgn(c - ref, k.dec) + '<span class="vs"> vs réf.</span></span>' : '') + fork + '</td>'; });
     return r + '</tr>'; };
   const rowEmp = '<tr><td>Emploi <span class="note">milliers, écart à la référence</span></td>' + shown.map(s => { const R = getR(s.id); return '<td><span class="v">' + (s.id === 'ref' ? fmt(RES.ref.empK[t], 0) : sgn(R.central.empK[t] - RES.ref.empK[t], 0)) + '</span>' + (s.id === 'ref' ? '<span class="d">niveau</span>' : '') + '</td>'; }).join('') + '</tr>';
   h += '<section class="card"><h2>Tableau de bord ' + state.horizon + '</h2><div class="scroll"><table>' + thead + '<tbody>' +
-    sect('Activité et finances publiques') + rowK('gdpG') + rowK('u') + rowEmp + ['solde', 'debt', 'intPct', 'oat', 'infl', 'bal'].map(x => rowK(x)).join('') +
+    sect('Activité et finances publiques') + rowK('gdpR') + rowK('gdpG') + rowK('u') + rowEmp + ['solde', 'debt', 'intPct', 'oat', 'infl', 'bal'].map(x => rowK(x)).join('') +
     sect('Pouvoir d\'achat et inégalités') + rowK('pa', 'Pouvoir d\'achat moyen') + ['paB10', 'paB50', 'paB90', 'paT10', 's80'].map(x => rowK(x)).join('') +
     sect('Partage de la valeur, dette privée, extérieur') + ['wsh', 'dPriv', 'ca'].map(x => rowK(x)).join('') +
-    '</tbody></table></div><p class="note">Sous chaque valeur : l\'écart à la référence, puis la fourchette entre scénario pessimiste et scénario optimiste. Pouvoir d\'achat par groupe : écart de revenu réel à la référence, cumulé depuis 2027, puis en euros de 2026 par ménage et par an.</p></section>';
+    '</tbody></table></div><p class="note">Sous chaque valeur : l\'écart à la référence, puis le résultat dans les deux lectures du long terme. « Offre » : l\'activité revient vers un potentiel fixé par le nombre d\'actifs et la productivité. « Demande » : le potentiel suit l\'activité. La valeur principale est à mi-chemin. Pouvoir d\'achat par groupe : écart de revenu réel à la référence, cumulé depuis 2027, puis en euros de 2026 par ménage et par an.</p></section>';
   h += '<section class="card"><h2>Qui prête, qui emprunte : soldes par secteur, ' + state.horizon + '</h2><div class="scroll"><table>' + thead + '<tbody>' +
     rowK('solde', 'Administrations publiques', 1) + rowK('sfHh', 'Ménages', 1) + rowK('sfFirm', 'Entreprises', 1) + rowK('sfRow', 'Reste du monde', 1) +
     '<tr><td><b>Total</b></td>' + shown.map(() => '<td><span class="v">0,0</span></td>').join('') + '</tr></tbody></table></div>' +
@@ -203,7 +210,7 @@ function renderSynthese() {
   h += '<section class="card"><div class="row between"><h2>Trajectoires 2026-2037</h2><div class="seg" role="group" aria-label="Mode"><button data-act="mode" data-m="niveau" aria-pressed="' + (state.chartMode === 'niveau') + '">Niveaux</button><button data-act="mode" data-m="ecart" aria-pressed="' + (state.chartMode === 'ecart') + '">Écarts à la référence</button></div></div>' +
     '<div class="row"><label class="lbl" for="chartVar">Variable</label><select id="chartVar" data-act="var">' + VARS.map(x => '<option value="' + x.id + '"' + (x.id === state.chartVar ? ' selected' : '') + '>' + esc(x.nom) + '</option>').join('') + '</select>' +
     '<label class="sw-t" style="font-weight:400"><input type="checkbox" id="band" data-act="band"' + (state.band ? ' checked' : '') + '>Fourchettes</label><label class="sw-t" style="font-weight:400"><input type="checkbox" id="tview" data-act="tview"' + (state.tableView ? ' checked' : '') + '>Tableau</label></div>' +
-    '<div class="legend">' + shown.filter(s => state.chartMode === 'niveau' || s.id !== 'ref').map(s => '<span>' + swatch(s) + esc(s.name) + '</span>').join('') + '</div><div class="chart" id="chart"></div>';
+    '<div class="legend">' + shown.filter(s => state.chartMode === 'niveau' || s.id !== 'ref').map(s => '<span>' + swatch(s) + esc(s.name) + '</span>').join('') + '</div><div class="chart" id="chart"></div><p class="note" id="chartnote"></p>';
   if (state.tableView) {
     h += '<div class="scroll"><table><thead><tr><th>' + esc(v.nom) + '</th>' + HORIZONS.map(y => '<th>' + y + '</th>').join('') + '</tr></thead><tbody>' + shown.map(s => { const R = getR(s.id).central; return '<tr><td><span class="hd">' + swatch(s) + esc(s.name) + '</span></td>' + HORIZONS.map(y => '<td>' + (state.chartMode === 'ecart' ? sgn(val(R, v.id, ti(y)) - val(RES.ref, v.id, ti(y)), Math.max(v.dec, 1)) : fmt(val(R, v.id, ti(y)), v.dec)) + '</td>').join('') + '</tr>'; }).join('') + '</tbody></table></div>';
   }
@@ -225,9 +232,10 @@ function drawChart() {
   const series = shownList().filter(s => !ec || s.id !== 'ref').map(s => {
     const R = getR(s.id), g = (X, t) => val(X, v.id, t) - (ec ? val(RES.ref, v.id, t) : 0);
     const o = { name: s.name, color: s.color, dash: s.dash, vals: YEARS.map((y, t) => g(R.central, t)) };
-    if (state.band && s.id !== 'ref' && s.id !== 'env') { const a = YEARS.map((y, t) => g(R.pess, t)), b = YEARS.map((y, t) => g(R.opt, t)); o.lo = a.map((x, i) => Math.min(x, b[i], o.vals[i])); o.hi = a.map((x, i) => Math.max(x, b[i], o.vals[i])); }
+    if (state.band && s.id !== 'ref' && s.id !== 'env') { const e = YEARS.map((y, t) => envl(R, X => g(X, t))); o.lo = e.map(x => x[0]); o.hi = e.map(x => x[1]); }
     return o;
   });
+  const nt = $('#chartnote'); if (nt) nt.textContent = state.band ? 'Bande : éventail entre les deux lectures du long terme (offre, demande) et entre rendements pessimiste et optimiste des mesures. Elle s\'élargit avec le temps : après 2032, lire un ordre de grandeur, pas une prévision.' : '';
   if (!series.length) { el.innerHTML = '<p class="note">Affichez au moins un programme, ou activez un choc, pour voir un écart à la référence.</p>'; return; }
   lineChart(el, { series, dec: Math.max(v.dec, ec ? 2 : v.dec), mark: state.horizon, zero: ec, signed: ec, title: v.nom });
 }
@@ -404,17 +412,17 @@ const KPI = [['gdpG', 'Croissance', '%'], ['u', 'Chômage', '%'], ['solde', 'Sol
 function asideHTML(p) {
   const R = RES.progs[p.id], t = ti(state.horizon), c = R.central, ref = RES.env || RES.ref, n = p.measures.length, on = p.measures.filter(m => !m.off).length;
   let h = '<div class="row between"><h2>Résultat en ' + state.horizon + '</h2><span class="note">' + on + ' mesure' + (on > 1 ? 's' : '') + ' cochée' + (on > 1 ? 's' : '') + ' sur ' + n + '</span></div><div class="kpis">' +
-    KPI.map(k => { const v = val(c, k[0], t), r = val(ref, k[0], t), a = val(R.pess, k[0], t), b = val(R.opt, k[0], t);
+    KPI.map(k => { const v = val(c, k[0], t), r = val(ref, k[0], t), ab = envl(R, X => val(X, k[0], t)), a = ab[0], b = ab[1];
       return '<div class="kpi"><span class="kl">' + k[1] + '</span><span class="kn">' + fmt(v, 1) + '<small> ' + k[2] + '</small></span><span class="kd">' + sgn(v - r, 1) + ' vs réf.</span>' + (Math.abs(a - b) >= 0.05 ? '<span class="kd">de ' + fmt(Math.min(a, b), 1) + ' à ' + fmt(Math.max(a, b), 1) + '</span>' : '') + '</div>'; }).join('') + '</div>' +
     '<div class="kv"><span>Emploi, écart à la référence</span><span>' + sgn(c.empK[t] - ref.empK[t], 0) + ' milliers</span><span>PIB, écart à la référence</span><span>' + sgn((c._idx[t] / ref._idx[t] - 1) * 100, 2) + ' %</span><span>Effet direct sur le solde, avant effets économiques</span><span>' + sgn(c.xRev[t] - c.xSp[t], 1) + ' Md€</span></div>' +
     '<div class="row"><label class="lbl" for="avar">Courbe</label><select id="avar" data-act="avar">' + VARS.map(x => '<option value="' + x.id + '"' + (x.id === state.asideVar ? ' selected' : '') + '>' + esc(x.court || x.nom) + '</option>').join('') + '</select></div><div class="chart" id="achart"></div>' +
-    '<p class="note">Trait plein : le programme, avec sa fourchette entre scénario pessimiste et scénario optimiste. Tirets : la référence' + (RES.env ? ' avec chocs' : '') + '. Sous chaque chiffre : l\'écart à la référence, puis la fourchette.</p>' +
+    '<p class="note">Trait plein : le programme. Bande : l\'éventail entre les deux lectures du long terme (offre, demande) et entre rendements pessimiste et optimiste des mesures. Elle s\'élargit avec le temps : après 2032, lire un ordre de grandeur. Tirets : la référence' + (RES.env ? ' avec chocs' : '') + '. Sous chaque chiffre : l\'écart à la référence, puis la fourchette.</p>' +
     '<div class="row"><a class="btn" href="' + PAGES.synthese + '">Comparer les programmes</a><a class="btn" href="' + PAGES.detail + '">Voir le détail</a></div>';
   return h;
 }
 function drawAside() {
   const el = $('#achart'), p = prog(state.openProg); if (!el || !p || !RES.progs[p.id]) return;
-  const v = VAR[state.asideVar] || VAR.debt, R = RES.progs[p.id], ref = RES.env || RES.ref, vals = X => YEARS.map((y, t) => val(X, v.id, t)), a = vals(R.pess), b = vals(R.opt), c = vals(R.central);
+  const v = VAR[state.asideVar] || VAR.gdpR, R = RES.progs[p.id], ref = RES.env || RES.ref, vals = X => YEARS.map((y, t) => val(X, v.id, t)), c = vals(R.central), a = YEARS.map((y, t) => envl(R, X => val(X, v.id, t))[0]), b = YEARS.map((y, t) => envl(R, X => val(X, v.id, t))[1]);
   lineChart(el, { series: [{ name: 'Référence', short: 'Réf.', color: 'var(--s0)', dash: true, vals: vals(ref) }, { name: p.name, short: 'Programme', color: progColor(p.id), vals: c, lo: a.map((x, i) => Math.min(x, b[i], c[i])), hi: a.map((x, i) => Math.max(x, b[i], c[i])) }], dec: v.dec, mark: state.horizon, title: v.nom });
 }
 // rafraîchit le panneau de résultat et les sous-totaux du programme affiché
@@ -504,6 +512,12 @@ function renderMethode() {
   $('#view').innerHTML = '<section class="card"><h2>Ce que fait le modèle</h2><p class="note">Un modèle néo-keynésien annuel, calculé en écart à une trajectoire de référence. À court terme l\'activité dépend de la demande : consommation par dixième de niveau de vie, investissement, dépense publique, commerce extérieur. Les prix et les salaires s\'ajustent progressivement selon le chômage ; la compétitivité et l\'offre (capital, population active, productivité) ramènent ensuite l\'économie vers son potentiel. La croissance de fond n\'est pas calculée par le modèle : elle est posée, comme la somme de la croissance de la population active et des gains de productivité, corrigée du prix de l\'énergie, avec un rattrapage spontané que l\'on peut couper. Chaque mesure et chaque choc entre comme une impulsion, puis le modèle boucle : revenus, emploi, prix, recettes, dépenses, intérêts, dette, taux.</p>' +
     '<p class="note">La référence part du projet de budget pour 2027 (croissance de 1,0 %, ramenée ici à 0,8 % pour se rapprocher des prévisions indépendantes) : inflation de 1,8 %, déficit de 5,0 % du PIB, dette de 121,7 %, dépenses publiques à 56,9 % du PIB, prélèvements à 44,2 %, charge d\'intérêts de 91,2 Md€. Après 2027 elle prolonge la politique en place, sans réforme : la dépense primaire suit sa tendance et la dette se renouvelle aux taux de marché.</p>' +
     '<p class="note">Trois lectures par programme : le chiffrage central reprend les montants du candidat ; le scénario pessimiste réduit les recettes et les économies obtenues, gonfle les coûts, affaiblit les effets d\'offre et rend les marchés plus nerveux ; le scénario optimiste fait l\'inverse.</p></section>' +
+    '<section class="card"><h2>Deux lectures du long terme : offre et demande</h2><ul class="src">' +
+    '<li><b>Le désaccord.</b> Tous les économistes admettent que la demande fait l\'activité à court terme. Ils divergent sur la suite. Pour les uns, l\'activité revient vers un potentiel fixé par l\'offre : nombre d\'actifs, durée du travail, capital, productivité. Pour les autres, la demande façonne ce potentiel : une expansion longue ramène des gens vers l\'emploi et accélère la productivité, une récession longue détruit des capacités.</li>' +
+    '<li><b>Lecture « offre ».</b> C\'est le modèle d\'origine. Un chômage plus bas que dans la référence fait monter les salaires et les prix année après année, la compétitivité se dégrade, et l\'activité redescend. Moins d\'actifs ou moins d\'heures, c\'est moins de production.</li>' +
+    '<li><b>Lecture « demande ».</b> Quatre changements. Le potentiel rejoint l\'activité (80 % de l\'écart par an). Le chômage structurel suit le chômage observé (40 % de l\'écart par an), donc la pression sur les salaires s\'éteint en quelques années. La productivité gagne 0,3 % pour 1 % d\'activité en plus (loi de Kaldor-Verdoorn). Une baisse du nombre d\'actifs ne réduit plus directement l\'emploi ni la production. Deux freins restent : la hausse des prix pendant que le chômage baisse, et un taux d\'emprunt qui monte de 0,1 point par point de solde courant perdu. Ce dernier chiffre est une convention de la maquette.</li>' +
+    '<li><b>Ce qui est affiché.</b> La valeur principale est calculée à mi-chemin (réglage « Lecture du long terme » à 0,5, page Réglages). Les deux lectures pures sont toujours calculées et donnent les bornes. Selon le programme, la lecture la plus favorable n\'est pas la même : la demande pour une relance, souvent l\'offre pour un plan d\'économies. Le résultat à mi-chemin n\'est pas « le plus probable », et il peut sortir légèrement des deux bornes.</li>' +
+    '<li><b>Ce qui ne change pas.</b> Dans les deux lectures, la croissance annuelle revient près de celle de la référence une fois les mesures en place : une mesure déplace le niveau du PIB, pas son rythme. Ce qui diffère durablement, c\'est ce niveau, l\'emploi et la dette. Entre 2032 et 2037, le modèle suppose que les mesures restent en place, sans mesure nouvelle, sans choc et sans changement de taux de la BCE : c\'est une prolongation, pas une prévision.</li></ul></section>' +
     '<section class="card"><h2>Pouvoir d\'achat par groupe, soldes par secteur, dette privée</h2><ul class="src">' +
     '<li><b>Pouvoir d\'achat par groupe.</b> Le modèle calcule le revenu réel de chaque dixième de niveau de vie. Les lignes « 10 %, 50 %, 90 % les moins riches » et « 10 % les plus riches » regroupent ces dixièmes : c\'est l\'écart du revenu total du groupe par rapport à la référence. Les montants en euros supposent 3,1 millions de ménages par dixième. Le modèle ne descend pas sous le dixième : il ne dit rien du 1 % le plus riche.</li>' +
     '<li><b>Soldes par secteur.</b> Le solde public, celui des ménages, celui des entreprises et celui du reste du monde s\'annulent par construction. Le solde du reste du monde est l\'opposé du solde courant de la France : balance commerciale, plus revenus et transferts, moins intérêts de la dette publique versés à l\'étranger. Le poste revenus et transferts est fixé pour retrouver le solde courant prévu en 2026 (−0,6 % du PIB). Le solde des ménages est leur revenu moins leur consommation et leur investissement en logement : 4,7 % du PIB au départ, d\'après les agrégats du modèle. Celui des entreprises, banques comprises, est le reste : c\'est la ligne la moins sûre.</li>' +

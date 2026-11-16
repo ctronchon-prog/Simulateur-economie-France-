@@ -181,6 +181,11 @@ const PARAMS = [
   ['credLf', 'Part de l\'investissement des entreprises financée par emprunt', 0.4, 0, 1, 0.05, 'Dette privée et crédit', 0, 'Sert à suivre la dette des entreprises'],
   ['credRate', 'Crédit nouveau en moins pour 1 point de taux en plus (% de l\'encours, par an)', 0.5, 0, 2, 0.05, 'Dette privée et crédit', 0, 'Canal bancaire. N\'agit que si le crédit est activé'],
   ['credDem', 'Part du crédit supplémentaire dépensée en biens et services neufs', 0.5, 0, 1, 0.05, 'Dette privée et crédit', 0, 'Le reste achète des actifs existants. N\'agit que si le crédit est activé'],
+  ['demLed', 'Lecture du long terme : 0 = l\'offre fixe le potentiel, 1 = le potentiel suit la demande', 0.5, 0, 1, 0.05, 'Lecture du long terme', 1, 'Le résultat central est calculé avec ce réglage ; la fourchette va toujours de 0 à 1'],
+  ['demAbs', 'Lecture demande : part de l\'écart au potentiel absorbée chaque année', 0.8, 0, 1, 0.05, 'Lecture du long terme', 0, 'Hystérèse : le potentiel rejoint l\'activité'],
+  ['demNairu', 'Lecture demande : vitesse à laquelle le chômage structurel suit le chômage', 0.4, 0, 1, 0.05, 'Lecture du long terme', 0, 'Économie « à haute pression »'],
+  ['verdoorn', 'Lecture demande : gain de productivité pour 1 % d\'activité en plus', 0.3, 0, 0.6, 0.05, 'Lecture du long terme', 0, 'Loi de Kaldor-Verdoorn : estimations entre 0,3 et 0,5'],
+  ['extSpread', 'Lecture demande : hausse du taux d\'emprunt par point de solde courant perdu', 0.1, 0, 0.5, 0.05, 'Lecture du long terme', 0, 'Frein extérieur. Convention de la maquette'],
   ['credServ', 'Dépense en moins par euro d\'intérêts privés en plus', 0.3, 0, 1, 0.05, 'Dette privée et crédit', 0, 'Poids de la charge de la dette privée. N\'agit que si le crédit est activé']
 ].map(a => ({ id: a[0], label: a[1], def: a[2], min: a[3], max: a[4], step: a[5], group: a[6], simple: !!a[7], help: a[8], sw: !!a[9] }));
 const defaultParams = () => { const p = {}; PARAMS.forEach(x => p[x.id] = x.def); return p; };
@@ -583,7 +588,7 @@ function simulate(P, B, I, opt) {
   R.size = {}; SIZES.forEach(s => R.size[s.id] = { va: Z(), emp: Z(), inv: Z(), margin: Z() });
   R.trv = {}; TRANSV.forEach(s => R.trv[s.id] = { va: Z(), emp: Z(), inv: Z() });
   R.alerts = YEARS.map(() => []);
-  const S = { cD: new Array(10).fill(0), cO: 0, penSm: 0, rr: 0, rrl: 0, c: 0, ie: 0, ih: 0, x: 0, p: 0, pht: 0, pEc: 0, pIc: 0, w: 0, e: 0, jd: 0, k: 0, kpub: 0, hyst: 0, y: 0, ym: 0, dpi: 0, iavg: 0, Dd: 0, debtR: 0, defR: 0, pm: 0, comp: 0, ebe: 0, ystar: 0, sanc: 0, eduC: 0, pPrev: 0, secE: {}, sizeE: {}, lvlPa: 1, tfpE: 0, DhDev: 0, DfDev: 0, rH: 0, rF: 0, prevDef: null, prevPrev: null, npePrev: B.dep[0] - B.int[0] };
+  const S = { cD: new Array(10).fill(0), cO: 0, penSm: 0, rr: 0, rrl: 0, c: 0, ie: 0, ih: 0, x: 0, p: 0, pht: 0, pEc: 0, pIc: 0, w: 0, e: 0, jd: 0, k: 0, kpub: 0, hyst: 0, y: 0, ym: 0, dpi: 0, iavg: 0, Dd: 0, debtR: 0, defR: 0, pm: 0, comp: 0, ebe: 0, ystar: 0, sanc: 0, eduC: 0, pPrev: 0, secE: {}, sizeE: {}, lvlPa: 1, tfpE: 0, DhDev: 0, DfDev: 0, rH: 0, rF: 0, nh: 0, caDev: 0, prevDef: null, prevPrev: null, npePrev: B.dep[0] - B.int[0] };
   // lecture Keen : soldes sectoriels et dette privée
   const nrS = P.nrShare / 100, hhB0 = (D.RDB / D.Y0 - D.sh.C - D.sh.Ih) * 100;
   const otherInc = D.ca0 - B.bal[0] + nrS * B.int[0] / B.Yn[0] * 100; // revenus et transferts hors intérêts publics, % du PIB, calé sur 2026
@@ -609,7 +614,8 @@ function simulate(P, B, I, opt) {
     const nom = B.nom[t], Yb = B.Yr[t], Cb = B.C[t];
     const ecbDev = I.ecb[t];
     const sancSpread = S.sanc ? P.sanctionSpread : 0;
-    const spreadDev = (P.sDebt * S.debtR + P.sDef * S.defR) * (I.mkt || 1) + I.spread[t] + sancSpread;
+    const lam = P.demLed || 0; // 0 : l'offre fixe le potentiel ; 1 : le potentiel suit la demande
+    const spreadDev = (P.sDebt * S.debtR + P.sDef * S.defR) * (I.mkt || 1) + I.spread[t] + sancSpread + lam * P.extSpread * Math.max(0, -S.caDev);
     const rl = P.passLong * ecbDev + spreadDev, rs = ecbDev;
     const lend = 0.5 * rs + 0.5 * rl + I.cspread[t];
     const wd = I.wd[t] - P.ecbWd * 0.5 * (I.ecb[t] + I.ecb[t - 1]);
@@ -617,7 +623,7 @@ function simulate(P, B, I, opt) {
     const pm = 0.09 * I.pen[t] + 0.4 * I.tariff[t] - 0.6 * eur, dpm = pm - S.pm, pmNE = 0.4 * I.tariff[t] - 0.6 * eur;
     S.eduC = S.eduC * 0.97 + I.eduCum[t];
     S.penSm = 0.5 * S.penSm + 0.5 * I.pen[t];
-    const tfp = I.tfp[t] + P.educTfp * S.eduC * Math.min(1, t / 10) * 0.35 - P.enPot / 10 * S.penSm;
+    const tfp = I.tfp[t] + P.educTfp * S.eduC * Math.min(1, t / 10) * 0.35 - P.enPot / 10 * S.penSm + lam * P.verdoorn * S.y;
     const dprod = tfp - S.tfpE;
     const lfs = I.lfs[t], nairu = I.nairu[t], hrs = I.hrs[t], dhrs = I.hrs[t] - I.hrs[t - 1];
     const dpInd = (I.pInd[t] - I.pInd[t - 1]) + 0; const dpE = (I.pE[t] - I.pE[t - 1]) + 0.01 * (I.pen[t] - I.pen[t - 1]);
@@ -628,7 +634,7 @@ function simulate(P, B, I, opt) {
     const ixs = Math.max(0, Math.min(1, I.idxw[t] / 100)), ix = P.idxW + (1 - P.idxW) * ixs, ix2 = P.idxW2 * (1 - ixs);
     const cDn = new Array(10).fill(0); let cOth = 0;
     const jdTarget = I.jobs[t]; const jd = S.jd + 0.45 * (jdTarget - S.jd);
-    const eSupPct = P.supplyDirect * 0.67 * lfs + 0, ySup = P.supplyDirect * (0.67 * lfs * 0.8 + tfp * 0.5);
+    const eSupPct = (1 - lam) * (P.supplyDirect * 0.67 * lfs + 0), ySup = (1 - lam) * (P.supplyDirect * (0.67 * lfs * 0.8 + tfp * 0.5));
     // crédit : encours de référence, canal bancaire, charge de la dette privée (nuls si le crédit n'est pas activé)
     const cr = P.credOn ? 1 : 0, DhB = D.dHh0 / 100 * B.Yn[t - 1], DfB = D.dFirm0 / 100 * B.Yn[t - 1];
     const aH = -cr * P.credRate / 100 * lend * DhB, aF = -cr * P.credRate / 100 * lend * DfB;
@@ -646,7 +652,7 @@ function simulate(P, B, I, opt) {
       du = -(dE - (1 - B.u[t] / 100) * lfK) / B.LF[t] * 100;
       // Salaires et prix
       const gapDev = y - ystarNow;
-      const Aw = ix2 * S.dpi - P.phil * (du - nairu) + P.smicDiff * (I.smic[t] - I.smic[t - 1]) + 0.5 * dprod + (I.wshock[t] - I.wshock[t - 1]);
+      const Aw = ix2 * S.dpi - P.phil * (du - nairu - S.nh) + P.smicDiff * (I.smic[t] - I.smic[t - 1]) + 0.5 * dprod + (I.wshock[t] - I.wshock[t - 1]);
       const rest = P.aM * dpm + dpInd + dpE + 0.10 * gapDev + 0.10 * S.dpi;
       dpi = (P.aUlc * (Aw - dprod - dhrs + dUc) + rest) / (1 - P.aUlc * ix);
       dw = Aw + ix * dpi;
@@ -741,7 +747,7 @@ function simulate(P, B, I, opt) {
     // ----- Potentiel
     const k = S.k * 0.93 + 0.07 * (ie + crIe / B.Ie[t] * 100) - I.kdes[t];
     const kpub = S.kpub * 0.97 + dIg / (0.9 * Yb) * 100 - I.kdes[t] * 0.5;
-    const hyst = S.hyst + P.hyst * (y - S.ystar) * 0.5;
+    const hyst = S.hyst + P.hyst * (y - S.ystar) * 0.5 + lam * P.demAbs * (y - S.ystar);
     const ystar = 0.33 * k + 0.67 * (lfs - nairu + hrs) + tfp + P.kpubElas * kpub + hyst;
     // ----- Résultats
     const Yr = Yb * (1 + y / 100);
@@ -855,6 +861,7 @@ function simulate(P, B, I, opt) {
     // ----- État suivant
     S.sanc = sancNext; S.cD = cDn.slice(); S.cO = cOth; S.c = c; S.ie = ie; S.ih = ih; S.x = x; S.p = p; S.pht = pht; S.pEc += dpE; S.w = w; S.e = e; S.jd = jd; S.k = k; S.kpub = kpub; S.hyst = hyst;
     S.DhDev = DhDev; S.DfDev = DfDev; S.rH = rH; S.rF = rF;
+    S.nh = S.nh + lam * P.demNairu * (du - nairu - S.nh); S.caDev = R.ca[t] - (B.bal[t] + otherInc - nrS * B.int[t] / B.Yn[t] * 100);
     S.y = y; S.ym = ym; S.dpi = dpi; S.iavg = iavgDev; S.Dd = Dd; S.debtR = R.debt[t] - B.D[t] / B.Yn[t] * 100; S.defR = R.def[t] - B.def[t] / B.Yn[t] * 100;
     S.rr = lend - 0.3 * (dpi - dpE - dpInd); S.rrl = rl - 0.3 * (dpi - dpE - dpInd); S.pm = pm; S.comp = comp; S.ebe = ebe; S.ystar = ystar; S.tfpE = tfp;
     prev = { C: B.C[t] + c, Ie: B.Ie[t] + dIe, X: B.X[t] + dX, M: B.M[t] + dM, Yr, paDev };
