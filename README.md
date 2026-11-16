@@ -18,7 +18,7 @@ Aucune installation, aucun serveur : tout le calcul se fait dans le navigateur.
 | `methode.html` | Méthode, limites, sources |
 | `css/style.css` | Toute la mise en forme |
 | `js/moteur.js` | Le modèle. Aucun affichage, que du calcul |
-| `js/programmes.js` | Les programmes par défaut : LFI, RN, deux exemples fictifs |
+| `js/programmes.js` | Les programmes par défaut : LFI, RN, Philippe, Lisnard, deux exemples fictifs |
 | `js/app.js` | L'interface, commune à toutes les pages |
 
 ## Mettre en ligne avec GitHub Pages
@@ -35,4 +35,4 @@ Ouvrir `index.html` dans un navigateur suffit. Les réglages et les cases coché
 
 - Ajouter ou corriger un programme : `js/programmes.js`. Chaque mesure est une ligne ; le champ `sec` ouvre une nouvelle rubrique.
 - Changer une valeur du modèle : `js/moteur.js`, ou la page Réglages pour un essai sans toucher au code.
-- Les programmes LFI et RN sont des extrapolations, pas des chiffrages officiels : voir la page Méthode.
+- Les programmes des candidats sont des extrapolations, pas des chiffrages officiels : voir la page Méthode.

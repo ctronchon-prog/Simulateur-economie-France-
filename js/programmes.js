@@ -1,5 +1,5 @@
-/* Programmes par défaut de la maquette : LFI et RN (extrapolations), deux exemples fictifs.
-   Repris tels quels de la maquette publiée le 11 novembre 2026. */
+/* Programmes par défaut de la maquette : LFI, RN, Philippe et Lisnard (extrapolations), deux exemples fictifs.
+   LFI, RN et les exemples sont repris de la maquette publiée le 11 novembre 2026 ; Philippe et Lisnard ont été ajoutés le 16 novembre 2026. */
 (function (root) {
 'use strict';
 const E = root.ENGINE || require('./moteur.js');
@@ -90,6 +90,48 @@ const rnProg = () => {
     { lever: 'migr', value: -100, start: 2028, ramp: 1, nom: "Baisse de l'immigration : solde migratoire réduit de 100 000 par an", src: 'e' }
   ] };
 };
+const PHILIPPE_DESC = "Extrapolation, pas un chiffrage officiel. Édouard Philippe n'a pas publié de chiffrage mesure par mesure. Il donne une cible (déficit ramené de plus de 5 % à 2 % du PIB en cinq ans) et une clé de partage de l'effort : moitié sur les dépenses sociales, un quart sur l'État et les collectivités, un quart attendu de la croissance. La maquette traduit cette clé en enveloppes : 3 points de PIB, soit 47 Md€ sur le social et 23,5 Md€ sur l'État et les collectivités. Elle y place d'abord les mesures annoncées, puis complète jusqu'au total par des lignes « solde de l'enveloppe ». Le quart attendu de la croissance n'est pas saisi : c'est au modèle de dire s'il arrive.";
+const philippeProg = () => ({ id: 'philippe', name: 'Philippe · Horizons (extrapolation)', desc: PHILIPPE_DESC, measures: [
+  { sec: 'Entreprises et travail', lever: 'prodtax', value: -50, start: 2027, ramp: 5, nom: 'Impôts de production : 50 Md€ de baisse sur cinq ans', src: 'c' },
+  { lever: 'subv', value: -50, start: 2027, ramp: 5, nom: 'Aides publiques aux entreprises : 50 Md€ supprimés en contrepartie', src: 'c' },
+  { lever: 'hours', value: 1.5, start: 2028, ramp: 3, nom: 'Temps de travail fixé par accord d\'entreprise : deux heures de plus par semaine pour un quart environ des salariés', src: 'e' },
+  { lever: 'cotsal', value: -2, start: 2028, ramp: 3, nom: 'Heures au-delà de 35 heures exonérées de cotisations salariales', src: 'e' },
+  { lever: 'cotall', value: -1.5, start: 2028, ramp: 3, nom: 'Heures au-delà de la 37e exonérées de cotisations patronales', src: 'e' },
+  { lever: 'ir', value: -1, start: 2028, ramp: 3, nom: 'Heures au-delà de 35 heures exonérées d\'impôt sur le revenu', src: 'e' },
+  { sec: 'Dépenses sociales : moitié de l\'effort (47 Md€)', lever: 'age', value: 1, start: 2028, ramp: 6, nom: 'Retraite à 65 ans', src: 'm' },
+  { lever: 'age', value: 0.5, start: 2028, ramp: 8, nom: '45 annuités de cotisation en moins de dix ans (compté comme six mois d\'âge de plus)', src: 'e' },
+  { lever: 'chom', value: -3.5, start: 2028, ramp: 2, nom: 'Chômage : indemnisation limitée à 12 mois avant 50 ans', src: 'e' },
+  { lever: 'sante', value: -1, start: 2028, ramp: 1, nom: 'Arrêts maladie : trois jours de carence pour tous, public compris', src: 'e' },
+  { lever: 'benlow', value: -2, start: 2028, ramp: 3, nom: 'RSA limité dans la durée', src: 'e' },
+  { lever: 'sante', value: -17, start: 2028, ramp: 5, nom: 'Santé : solde de l\'enveloppe sociale', src: 'e' },
+  { lever: 'benlow', value: -6, start: 2028, ramp: 5, nom: 'Aides sous condition de ressources : solde de l\'enveloppe sociale', src: 'e' },
+  { lever: 'benfam', value: -6, start: 2028, ramp: 5, nom: 'Prestations familiales et logement : solde de l\'enveloppe sociale', src: 'e' },
+  { sec: 'État et collectivités : un quart de l\'effort (23,5 Md€)', lever: 'gjobs', value: -250, start: 2027, ramp: 5, nom: 'Un départ à la retraite sur trois non remplacé : 250 000 postes en cinq ans', src: 'c' },
+  { lever: 'gfonct', value: -5.5, start: 2028, ramp: 4, nom: 'Agences et opérateurs fusionnés ou supprimés : solde de l\'enveloppe', src: 'e' },
+  { lever: 'dotct', value: -4, start: 2028, ramp: 4, nom: 'Collectivités : solde de l\'enveloppe', src: 'e' },
+  { sec: 'Dépenses nouvelles et baisses d\'impôts', lever: 'ir', value: -4, start: 2028, ramp: 3, nom: 'Impôt sur le revenu suspendu trois ans après une naissance pour les classes moyennes, réduction de 3 000 € au-dessus', src: 'e' },
+  { lever: 'educ', value: 6, start: 2028, ramp: 5, nom: 'Enseignants payés 20 % de plus en cinq ans', src: 'e' },
+  { lever: 'ipub', value: 2, start: 2028, ramp: 1, nom: 'Fonds d\'adaptation au changement climatique : 2 Md€ par an', src: 'c' },
+  { sec: 'Hypothèse de la maquette', lever: 'migr', value: -60, start: 2028, ramp: 1, nom: 'Immigration légale réduite : solde migratoire en baisse de 60 000 par an', src: 'e' }
+] });
+const LISNARD_DESC = "Extrapolation, pas un chiffrage officiel. Ossature : les annonces de David Lisnard, soit 200 Md€ d'économies par an en fin de mandat (80 Md€ dès la première année), dont 120 Md€ rendus aux actifs en baisse de cotisations, 40 Md€ en baisse d'impôts de production et 40 Md€ pour réduire le déficit. Il n'a pas détaillé les économies poste par poste : leur ventilation est celle de la maquette, d'après les postes qu'il cite (fonction publique, agences, collectivités, allocation sociale unique, aides aux entreprises, pensions au-dessus de 2 000 €). Le partage des 120 Md€ entre cotisations salariales et patronales est aussi une hypothèse.";
+const lisnardProg = () => ({ id: 'lisnard', name: 'Lisnard · Nouvelle Énergie (extrapolation)', desc: LISNARD_DESC, measures: [
+  { sec: 'Baisses de prélèvements : 160 Md€', lever: 'cotsal', value: -90, start: 2027, ramp: 3, nom: 'Cotisations salariales : part des 120 Md€ rendus aux actifs', src: 'c' },
+  { lever: 'cotall', value: -30, start: 2027, ramp: 3, nom: 'Cotisations patronales entre 2 et 4 SMIC : part des 120 Md€ rendus aux actifs', src: 'c' },
+  { lever: 'prodtax', value: -40, start: 2027, ramp: 3, nom: 'Impôts de production : 40 Md€, en commençant par la C3S et la CVAE', src: 'c' },
+  { sec: 'Économies : 200 Md€, ventilation de la maquette', lever: 'gjobs', value: -400, start: 2027, ramp: 5, nom: 'Fonction publique : départs non remplacés, 400 000 postes en cinq ans', src: 'e' },
+  { lever: 'gfonct', value: -40, start: 2027, ramp: 3, nom: 'État recentré : agences, opérateurs, agences régionales de santé, fonctionnement', src: 'e' },
+  { lever: 'dotct', value: -15, start: 2027, ramp: 3, nom: 'Collectivités : départements et régions fusionnés en provinces', src: 'e' },
+  { lever: 'subv', value: -40, start: 2027, ramp: 3, nom: 'Aides aux entreprises supprimées, remplacées par les baisses de charges', src: 'e' },
+  { lever: 'benlow', value: -20, start: 2027, ramp: 3, nom: 'Allocation sociale unique plafonnée : minima et aides ciblées', src: 'e' },
+  { lever: 'benfam', value: -10, start: 2027, ramp: 3, nom: 'Allocation sociale unique plafonnée : aides au logement et prestations', src: 'e' },
+  { lever: 'sante', value: -30, start: 2027, ramp: 3, nom: 'Santé et hôpital', src: 'e' },
+  { lever: 'chom', value: -6, start: 2027, ramp: 3, nom: 'Assurance chômage', src: 'e' },
+  { lever: 'pens', value: -4, start: 2028, ramp: 5, nom: 'Pensions au-dessus de 2 000 € par mois désindexées cinq ans (environ 17 Md€), pour amorcer la capitalisation', src: 'e' },
+  { sec: 'Dépenses nouvelles et autres mesures', lever: 'educ', value: 6, start: 2028, ramp: 5, nom: 'Enseignants payés 20 % de plus en cinq ans', src: 'e' },
+  { lever: 'ir', value: -3, start: 2028, ramp: 1, nom: 'Quotient familial déplafonné', src: 'e' },
+  { sec: 'Hypothèse de la maquette', lever: 'migr', value: -150, start: 2028, ramp: 1, nom: 'Titres de séjour divisés par huit : solde migratoire en baisse de 150 000 par an', src: 'e' }
+] });
 const exampleProgs = () => [
   { id: 'exA', name: 'Exemple A · relance (fictif)', measures: [
     { lever: 'smic', value: 5, start: 2027, ramp: 1 }, { lever: 'benlow', value: 10, start: 2027, ramp: 1 },
@@ -101,8 +143,8 @@ const exampleProgs = () => [
     { lever: 'gfonct', value: -20, start: 2027, ramp: 3 }, { lever: 'pens', value: -1, start: 2028, ramp: 1 },
     { lever: 'age', value: 1, start: 2028, ramp: 1 }, { lever: 'prodtax', value: -10, start: 2028, ramp: 2 }, { lever: 'cotlow', value: -8, start: 2028, ramp: 1 },
     { custom: 1, nom: "Réforme de l'État, gains d'efficacité", canal: 'c_eco', montant: 15, eff: [30, 60, 100], start: 2028, ramp: 4 }] },
-  lfiProg(), rnProg()
+  lfiProg(), rnProg(), philippeProg(), lisnardProg()
 ];
-const API = { copyBar, lfiProg, rnProg, exampleProgs };
+const API = { copyBar, lfiProg, rnProg, philippeProg, lisnardProg, exampleProgs };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.PROGRAMMES = API;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
