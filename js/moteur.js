@@ -149,7 +149,7 @@ const PARAMS = [
   ['sigL', 'Élasticité de l\'emploi au coût du travail', 0.3, 0, 1, 0.05, 'Emploi', 1, ''],
   ['jobsLow', 'Emplois par Md€ d\'allègement bas salaires (milliers)', 20, 0, 40, 1, 'Emploi', 0, ''],
   ['jobsAll', 'Emplois par Md€ d\'allègement général (milliers)', 6, 0, 20, 1, 'Emploi', 0, ''],
-  ['smicEmp', 'Élasticité de l\'emploi peu qualifié au SMIC', 0.05, 0, 1.2, 0.05, 'Emploi', 0, ''],
+  ['smicEmp', 'Élasticité de l\'emploi peu qualifié au SMIC', 0.35, 0, 1.2, 0.05, 'Emploi', 0, 'Destructions directes, avant les effets de la demande et des allègements. Calé pour que le résultat à mi-chemin soit proche du chiffrage d\'Éric Heyer (OFCE) pour un SMIC à 1 600 € : un peu moins de 30 000 destructions nettes'],
   ['smicAll', 'SMIC : effet sur l\'emploi des allègements de cotisations qui gonflent avec lui (part)', 0.8, 0, 1, 0.05, 'Emploi', 0, 'Le barème des allègements est indexé sur le SMIC : sa hausse abaisse le coût des salaires voisins'],
   ['flex', 'Flexion des taux d\'activité', 0.3, 0, 0.7, 0.05, 'Emploi', 0, ''],
   ['rttProd', 'Durée du travail : gains de productivité horaire (part de la baisse compensée)', 0.4, 0, 0.8, 0.05, 'Emploi', 0, 'Évaluations des 35 heures : un tiers à la moitié'],
@@ -203,6 +203,17 @@ const PARAMS = [
   ['demProf', 'Lecture demande : part de l\'effet des marges sur l\'investissement qui disparaît', 0.9, 0, 1, 0.05, 'Lecture du long terme', 0, ''],
   ['ppbLoss', 'Pôle public bancaire : pertes attendues, à la charge de l\'État (% des financements)', 4, 0, 15, 0.5, 'Offre', 0, 'Ordre de grandeur des pertes estimées sur les prêts garantis par l\'État de 2020'],
   ['hrsOut', 'Heures en plus, lecture offre : production supplémentaire par point d\'heures', 0.8, 0, 1, 0.05, 'Emploi', 0, ''],
+  ['hrsSpeed', 'Heures en plus, lecture offre : part des débouchés gagnée chaque année', 0.3, 0.1, 1, 0.05, 'Emploi', 0, 'La production supplémentaire ne se vend pas tout de suite : à 0,3, environ la moitié est écoulée au bout de deux ans, les quatre cinquièmes au bout de cinq'],
+  ['ageKeep', 'Âge de la retraite, lecture demande : part des personnes concernées qui gardent (recul) ou quittent (avancée) un emploi', 0.75, 0, 1, 0.05, 'Emploi', 0, 'L\'OFCE retient 80 % vers l\'emploi et 20 % vers le chômage pour la réforme de 2023'],
+  ['ageFade', 'Âge de la retraite, lecture demande : part de cet effet direct qui s\'efface chaque année', 0.2, 0, 0.5, 0.05, 'Lecture du long terme', 0, 'En lecture demande, les entreprises ajustent peu à peu leurs embauches au niveau de leurs commandes'],
+  ['migrC', 'Lecture demande : dépense d\'un nouvel arrivant, par rapport à celle d\'un habitant moyen', 1, 0, 1.5, 0.05, 'Lecture du long terme', 0, 'Consommation et logement. À 0, les nouveaux arrivants cherchent un emploi sans rien dépenser'],
+  ['ppbCap', 'Pôle public bancaire : montant annuel au-delà duquel les bons projets se raréfient (Md€)', 150, 0, 300, 10, 'Offre', 0, 'Chaque milliard de plus finance un peu moins d\'investissement nouveau. 0 : pas de limite'],
+  ['ppbDebt', 'Pôle public bancaire : part des financements comptée dans la dette publique (%)', 0, 0, 100, 10, 'Finances publiques', 0, 'Les banques publiques existantes (Bpifrance, KfW en Allemagne) sont hors dette publique. Eurostat pourrait en juger autrement pour une banque qui prête sur ordre de l\'État. Les prêts sont supposés remboursés en dix ans'],
+  ['pbCap', 'Blocage des prix : montant que les marges des secteurs visés peuvent absorber (Md€)', 10, 0, 40, 1, 'Offre', 0, 'Au-delà, l\'État compense (sinon les rayons se vident). 0 : tout est pris sur les marges'],
+  ['tarRet', 'Droits de douane : exportations perdues par point de droits, par riposte des partenaires (%)', 0.45, 0, 1, 0.05, 'Extérieur', 0, ''],
+  ['tarTfp', 'Droits de douane : perte de productivité par point de droits, au bout de cinq ans (%)', 0.06, 0, 0.12, 0.01, 'Extérieur', 0, 'Sur 151 pays de 1963 à 2014, le FMI (Furceri et al.) trouve une perte de production d\'environ 0,1 % par point de droits au bout de cinq ans'],
+  ['pubHire', 'Santé, éducation : part de la masse salariale en plus qui va à des embauches', 0.5, 0, 1, 0.05, 'Emploi', 0, 'Le reste revalorise les salaires'],
+  ['gwOut', 'Santé, éducation : salaires publics comptés comme emploi public et non comme commandes aux entreprises', 1, 0, 1, 1, 'Multiplicateurs', 0, 'Évite de compter deux fois le revenu des agents', 1],
   ['smicHi', 'SMIC : élasticité de l\'emploi peu qualifié au-delà de +15 %', 0.3, 0, 1, 0.05, 'Emploi', 0, 'L\'estimation retenue pour le SMIC vaut pour des hausses modérées ; au-delà, de plus en plus de salariés sont concernés'],
   ['taxSat', 'Impôts sur le capital et les hauts revenus : rendement qui plafonne aux fortes doses', 1, 0, 1, 1, 'Limites', 0, '1 : oui. 0 : chaque euro voté rentre'],
   ['credServ', 'Dépense en moins par euro d\'intérêts privés en plus', 0.3, 0, 1, 0.05, 'Dette privée et crédit', 0, 'Poids de la charge de la dette privée. N\'agit que si le crédit est activé']
@@ -276,7 +287,7 @@ function baseline(P) {
 }
 
 /* ---------- Accumulateur d'impulsions ---------- */
-const CH = ['G', 'Ig', 'pInd', 'pE', 'firmMargin', 'ucost', 'ieff', 'smic', 'lfs', 'tfp', 'nairu', 'jobs', 'gjobs', 'wd', 'pen', 'eur', 'spread', 'cspread', 'eq', 'cshock', 'ieshock', 'ihshock', 'xshock', 'kdes', 'ecb', 'conf', 'tariff', 'emp', 'wshock', 'defDem', 'tour', 'agri', 'tech', 'attr', 'isAmt', 'isGe', 'prodAmt', 'cotLowAmt', 'eduCum', 'mImp', 'idxw', 'hrs', 'csave'];
+const CH = ['G', 'Ig', 'pInd', 'pE', 'firmMargin', 'ucost', 'ieff', 'smic', 'lfs', 'tfp', 'nairu', 'jobs', 'gjobs', 'wd', 'pen', 'eur', 'spread', 'cspread', 'eq', 'cshock', 'ieshock', 'ihshock', 'xshock', 'kdes', 'ecb', 'conf', 'tariff', 'emp', 'wshock', 'defDem', 'tour', 'agri', 'tech', 'attr', 'isAmt', 'isGe', 'prodAmt', 'cotLowAmt', 'eduCum', 'mImp', 'idxw', 'hrs', 'csave', 'lfsA', 'Gw', 'ppbI', 'ppbD'];
 function newImp() {
   const I = { hh: D.dec.rdb.map(() => Z()), hhA: Z(), hhR: Z(), rev: {}, spend: {}, sub: { etat: Z(), ct: Z(), secu: Z() }, br: {} };
   Object.keys(D.R0).forEach(k => I.rev[k] = Z()); Object.keys(D.S0).forEach(k => I.spend[k] = Z());
@@ -323,19 +334,19 @@ const LEVERS = [
   // Travail et salaires
   { id: 'smic', g: 'Travail et salaires', nom: 'SMIC, hausse au-delà de l\'indexation', unit: '%', y: 1.4, min: -5, max: 25, step: 0.5, sens: -1, fx: (A, u, P, c) => { A.spend('subv', 1.4 * u * c.idx * c.r, { secu: 1 }, { mal: .4, vie: .4, fam: .2 }); A.add('smic', u); const m = 1.1 * u * c.idx; A.hh(dc.smic, m, 1); A.hh(dc.wages, -m, 1); A.add('jobs', -P.smicEmp * u / 100 * 2700 + P.smicAll * P.jobsLow * 0.6 * u - (u > 15 ? P.smicHi * (u - 15) / 100 * 2700 * (1 + (u - 15) / 20) : 0)); A.add('ucost', -P.smicAll * 0.6 * u * c.idx); A.add('nairu', 0.01 * u); } },
   { id: 'cotsal', g: 'Travail et salaires', nom: 'Cotisations salariales', unit: 'Md€', y: 1, min: -100, max: 30, step: 1, sens: 1, fx: (A, u, P, c) => { const m = u * c.idx * c.r; A.rev('cot', m, { secu: 1 }, { vie: .6, mal: .2, une: .2 }); A.hh(dc.wages, -m, 1); } },
-  { id: 'age', g: 'Travail et salaires', nom: 'Âge légal de départ à la retraite', unit: 'an', y: 5, min: -4, max: 4, step: 0.25, sens: 1, supply: 1, slow: 6, fx: (A, u, P, c) => { const m = 8 * u * c.idx * c.r; A.spend('presta', -m, { secu: .85, etat: .15 }, { vie: .62, comp: .23 }); A.hh(dc.pens, -m, 0); const b = 3 * u * c.idx; A.spend('presta', b, { secu: .8, ct: .2 }, { une: .5, mal: .3 }); A.hh(dc.ben, b, .9); A.add('lfs', 0.7 * u * c.sup); } },
-  { id: 'hours', g: 'Travail et salaires', nom: 'Durée effective du travail (baisse : salaire mensuel maintenu ; hausse : heures payées)', unit: '%', y: 0, min: -12, max: 8, step: 0.5, sens: 0, supply: 1, fx: (A, u, P, c) => { A.add('hrs', (1 - P.rttProd) * u); A.add('wshock', u > 0 ? (1 - P.rttProd) * u : u * (1 - P.rttComp)); } },
+  { id: 'age', g: 'Travail et salaires', nom: 'Âge légal de départ à la retraite', unit: 'an', y: 5, min: -4, max: 4, step: 0.25, sens: 1, supply: 1, slow: 6, fx: (A, u, P, c) => { const m = 8 * u * c.idx * c.r; A.spend('presta', -m, { secu: .85, etat: .15 }, { vie: .62, comp: .23 }); A.hh(dc.pens, -m, 0); const b = 3 * u * c.idx; A.spend('presta', b, { secu: .8, ct: .2 }, { une: .5, mal: .3 }); A.hh(dc.ben, b, .9); A.add('lfs', 0.7 * u * c.sup); A.add('lfsA', 0.7 * u * c.sup); } },
+  { id: 'hours', g: 'Travail et salaires', nom: 'Durée effective du travail (baisse : salaire mensuel maintenu ; hausse : heures payées ; 39 h légales valent +2 à +3 %)', unit: '%', y: 0, min: -12, max: 8, step: 0.5, sens: 0, supply: 1, fx: (A, u, P, c) => { A.add('hrs', (1 - P.rttProd) * u); A.add('wshock', u > 0 ? (1 - P.rttProd) * u : u * (1 - P.rttComp)); } },
   { id: 'idxsal', g: 'Travail et salaires', nom: 'Indexation des salaires sur les prix (échelle mobile)', unit: '%', y: 0, min: 0, max: 100, step: 10, sens: 0, fx: (A, u) => { A.add('idxw', u); } },
   { id: 'chom', g: 'Travail et salaires', nom: 'Assurance chômage, générosité', unit: 'Md€', y: 1, min: -15, max: 15, step: 0.5, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r; A.spend('presta', m, { secu: 1 }, { une: 1 }); A.hh(dc.jobs, m, 1); A.add('nairu', 0.04 * u); } },
-  { id: 'migr', g: 'Travail et salaires', nom: 'Solde migratoire', unit: 'milliers/an', y: 0, min: -200, max: 300, step: 10, sens: 0, cumul: 1, fx: (A, u, P, c) => { A.add('lfs', 0.0018 * u); A.spend('fonct', 0.006 * u * c.idx, { etat: .5, ct: .3, secu: .2 }, { mal: .2 }); A.add('G', 0.006 * u); } },
+  { id: 'migr', g: 'Travail et salaires', nom: 'Solde migratoire', unit: 'milliers/an', y: 0, min: -200, max: 300, step: 10, sens: 0, cumul: 1, fx: (A, u, P, c) => { A.add('lfs', 0.0018 * u); A.spend('fonct', 0.006 * u * c.idx, { etat: .5, ct: .3, secu: .2 }, { mal: .2 }); A.add('G', 0.006 * u); A.add('cshock', (P.demLed || 0) * P.migrC * 0.0015 * u); } },
   // Dépenses publiques
   { id: 'gjobs', g: 'Dépenses publiques', nom: 'Emplois publics', unit: 'milliers', y: 0.055, min: -500, max: 500, step: 10, sens: -1, fx: (A, u, P, c) => { const m = 0.055 * u * c.idx * c.r; A.spend('salaires', m, { etat: .5, ct: .3, secu: .2 }, { mal: .2 }); A.add('gjobs', u); A.add('G', m / c.idx); A.hh(dc.pubw, m * 0.62, 1); } },
   { id: 'gpoint', g: 'Dépenses publiques', nom: 'Point d\'indice des fonctionnaires', unit: '%', y: 2.4, min: -5, max: 20, step: 0.5, sens: -1, fx: (A, u, P, c) => { const m = u * 2.4 * c.idx * c.r; A.spend('salaires', m, { etat: .45, ct: .3, secu: .25 }, { mal: .25 }); A.hh(dc.pubw, m * 0.62, 1); A.rev('cot', m * 0.2, { secu: 1 }, { vie: .5, mal: .5 }); } },
   { id: 'gfonct', g: 'Dépenses publiques', nom: 'Fonctionnement de l\'État et des opérateurs', unit: 'Md€', y: 1, min: -40, max: 40, step: 1, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r; A.spend('fonct', m); A.add('G', m / c.idx); } },
   { id: 'ipub', g: 'Dépenses publiques', nom: 'Investissement public', unit: 'Md€', y: 1, min: -30, max: 60, step: 1, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r; A.spend('invest', m, { etat: .6, ct: .4 }); A.add('Ig', m / c.idx); } },
   { id: 'def', g: 'Dépenses publiques', nom: 'Défense', unit: 'Md€', y: 1, min: -20, max: 50, step: 1, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r, v = m / c.idx; A.spend('fonct', 0.5 * m); A.spend('invest', 0.5 * m); A.add('G', 0.5 * v); A.add('Ig', 0.5 * v); A.add('defDem', v); A.add('mImp', 0.12 * v); } },
-  { id: 'sante', g: 'Dépenses publiques', nom: 'Santé et hôpital', unit: 'Md€', y: 1, min: -30, max: 40, step: 1, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r; A.spend('presta', 0.6 * m, { secu: 1 }, { mal: .6 }); A.spend('salaires', 0.4 * m, { secu: 1 }, { mal: .4 }); A.add('G', m / c.idx); A.hh(dc.pubw, 0.4 * m * 0.62, 1); } },
-  { id: 'educ', g: 'Dépenses publiques', nom: 'Éducation et recherche', unit: 'Md€', y: 1, min: -20, max: 40, step: 1, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r; A.spend('salaires', 0.6 * m); A.spend('fonct', 0.4 * m); A.add('G', m / c.idx); A.hh(dc.pubw, 0.6 * m * 0.62, 1); A.add('eduCum', m / c.idx * c.sup); } },
+  { id: 'sante', g: 'Dépenses publiques', nom: 'Santé et hôpital', unit: 'Md€', y: 1, min: -30, max: 40, step: 1, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r; A.spend('presta', 0.6 * m, { secu: 1 }, { mal: .6 }); A.spend('salaires', 0.4 * m, { secu: 1 }, { mal: .4 }); A.add('G', m / c.idx); A.hh(dc.pubw, 0.4 * m * 0.62, 1); const wg = P.gwOut * 0.4 * m / c.idx; A.add('gjobs', P.pubHire * wg / 0.055); A.add('Gw', (1 - P.pubHire) * wg); } },
+  { id: 'educ', g: 'Dépenses publiques', nom: 'Éducation et recherche', unit: 'Md€', y: 1, min: -20, max: 40, step: 1, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r; A.spend('salaires', 0.6 * m); A.spend('fonct', 0.4 * m); A.add('G', m / c.idx); A.hh(dc.pubw, 0.6 * m * 0.62, 1); A.add('eduCum', m / c.idx * c.sup); const wg = P.gwOut * 0.6 * m / c.idx; A.add('gjobs', P.pubHire * wg / 0.055); A.add('Gw', (1 - P.pubHire) * wg); } },
   { id: 'pens', g: 'Dépenses publiques', nom: 'Revalorisation des pensions (écart à l\'inflation)', unit: 'pt', y: 4.2, min: -4, max: 6, step: 0.25, sens: -1, fx: (A, u, P, c) => { const m = u * 4.2 * c.idx * c.r; A.spend('presta', m, { secu: .85, etat: .15 }, { vie: .62, comp: .23 }); A.hh(dc.pens, m * 0.91, 0); } },
   { id: 'benlow', g: 'Dépenses publiques', nom: 'Minima sociaux et aides ciblées bas revenus', unit: 'Md€', y: 1, min: -20, max: 40, step: 1, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r; A.spend('presta', m, { etat: .6, ct: .3, secu: .1 }, { fam: .1 }); A.hh(dc.low, m, .85); A.add('nairu', 0.01 * u); } },
   { id: 'benfam', g: 'Dépenses publiques', nom: 'Prestations familiales et logement', unit: 'Md€', y: 1, min: -20, max: 30, step: 1, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r; A.spend('presta', m, { secu: .7, etat: .3 }, { fam: .7 }); A.hh(dc.fam, m, .95); } },
@@ -343,8 +354,8 @@ const LEVERS = [
   { id: 'dotct', g: 'Dépenses publiques', nom: 'Dotations aux collectivités', unit: 'Md€', y: 1, min: -20, max: 20, step: 0.5, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r, v = m / c.idx; A.spend('fonct', 0.4 * m, { ct: 1 }); A.spend('invest', 0.35 * m, { ct: 1 }); A.add('G', 0.4 * v); A.add('Ig', 0.35 * v); A.transfer('etat', 'ct', m); } },
   { id: 'esub', g: 'Dépenses publiques', nom: 'Bouclier sur les prix de l\'énergie', unit: 'Md€', y: 1, min: 0, max: 50, step: 1, sens: -1, fx: (A, u, P, c) => { const m = u * c.idx * c.r; A.spend('subv', m); A.add('pE', -0.8 * m / (1650 * c.idx) * 100); } },
   // International
-  { id: 'ppb', g: 'Investissement hors budget et prix', nom: 'Financements d\'un pôle public bancaire (hors budget)', unit: 'Md€', y: 0, min: 0, max: 200, step: 5, sens: 0, fx: (A, u, P, c) => { A.add('ieff', P.ppbAdd * c.sup * u / (D.Y0 * D.sh.Ie * 1.027) * 100); A.spend('subv', P.ppbLoss / 100 * u * c.idx, { etat: 1 }); } },
-  { id: 'prixbloc', g: 'Investissement hors budget et prix', nom: 'Blocage de prix pris sur les marges (carburants, première nécessité)', unit: 'Md€', y: 0, min: 0, max: 40, step: 1, sens: 0, fx: (A, u, P, c) => { const m = u * c.idx; A.add('pE', -0.8 * m / (1650 * c.idx) * 100); A.add('firmMargin', -m); A.rev('tva', -0.167 * m, TVA_SPLIT, { mal: .25 }); A.add('ieff', -0.05 * u); } },
+  { id: 'ppb', g: 'Investissement hors budget et prix', nom: 'Financements d\'un pôle public bancaire (hors budget)', unit: 'Md€', y: 0, min: 0, max: 200, step: 5, sens: 0, fx: (A, u, P, c) => { const ue = P.ppbCap > 0 ? P.ppbCap * (1 - Math.exp(-u / P.ppbCap)) : u; A.add('ieff', P.ppbAdd * c.sup * ue / (D.Y0 * D.sh.Ie * 1.027) * 100); A.add('ppbI', P.ppbAdd * c.sup * ue); A.add('ppbD', P.ppbDebt / 100 * u * c.idx); A.spend('subv', P.ppbLoss / 100 * u * c.idx, { etat: 1 }); } },
+  { id: 'prixbloc', g: 'Investissement hors budget et prix', nom: 'Blocage de prix pris sur les marges (carburants, première nécessité)', unit: 'Md€', y: 0, min: 0, max: 40, step: 1, sens: 0, fx: (A, u, P, c) => { const m = u * c.idx, a = P.pbCap > 0 ? P.pbCap * (1 - Math.exp(-u / P.pbCap)) : u; A.add('pE', -0.8 * m / (1650 * c.idx) * 100); A.add('firmMargin', -a * c.idx); if (u - a > 0) A.spend('subv', (u - a) * c.idx, { etat: 1 }); A.rev('tva', -0.167 * m, TVA_SPLIT, { mal: .25 }); A.add('ieff', -0.05 * a); } },
   { id: 'tariff', g: 'International', nom: 'Droits de douane aux frontières', unit: 'pt', y: 0, min: 0, max: 30, step: 1, sens: 0, fx: (A, u) => { A.add('tariff', u); } },
   { id: 'eu', g: 'International', nom: 'Contribution au budget européen', unit: 'Md€', y: 1, min: -15, max: 10, step: 0.5, sens: -1, fx: (A, u, P, c) => { A.spend('autres', u * c.idx * c.r); } }
 ];
@@ -613,7 +624,7 @@ function simulate(P, B, I, opt) {
   R.size = {}; SIZES.forEach(s => R.size[s.id] = { va: Z(), emp: Z(), inv: Z(), margin: Z() });
   R.trv = {}; TRANSV.forEach(s => R.trv[s.id] = { va: Z(), emp: Z(), inv: Z() });
   R.alerts = YEARS.map(() => []);
-  const S = { cD: new Array(10).fill(0), cO: 0, penSm: 0, rr: 0, rrl: 0, c: 0, ie: 0, ih: 0, x: 0, p: 0, pht: 0, pEc: 0, pIc: 0, w: 0, e: 0, jd: 0, k: 0, kpub: 0, hyst: 0, y: 0, ym: 0, dpi: 0, iavg: 0, Dd: 0, debtR: 0, defR: 0, pm: 0, comp: 0, ebe: 0, ystar: 0, sanc: 0, eduC: 0, pPrev: 0, secE: {}, sizeE: {}, lvlPa: 1, tfpE: 0, DhDev: 0, DfDev: 0, rH: 0, rF: 0, nh: 0, caDev: 0, ulc: 0, debtLvl: B.D[0] / B.Yn[0] * 100, prevDef: null, prevPrev: null, npePrev: B.dep[0] - B.int[0] };
+  const S = { cD: new Array(10).fill(0), cO: 0, penSm: 0, rr: 0, rrl: 0, c: 0, ie: 0, ih: 0, x: 0, p: 0, pht: 0, pEc: 0, pIc: 0, w: 0, e: 0, jd: 0, k: 0, kpub: 0, hyst: 0, y: 0, ym: 0, dpi: 0, iavg: 0, Dd: 0, debtR: 0, defR: 0, pm: 0, comp: 0, ebe: 0, ystar: 0, sanc: 0, eduC: 0, pPrev: 0, secE: {}, sizeE: {}, lvlPa: 1, tfpE: 0, DhDev: 0, DfDev: 0, rH: 0, rF: 0, nh: 0, caDev: 0, ulc: 0, hOut: 0, keep: 0, tarE: 0, pp: 0, debtLvl: B.D[0] / B.Yn[0] * 100, prevDef: null, prevPrev: null, npePrev: B.dep[0] - B.int[0] };
   // lecture Keen : soldes sectoriels et dette privée
   const nrS = P.nrShare / 100, hhB0 = (D.RDB / D.Y0 - D.sh.C - D.sh.Ih) * 100;
   const otherInc = D.ca0 - B.bal[0] + nrS * B.int[0] / B.Yn[0] * 100; // revenus et transferts hors intérêts publics, % du PIB, calé sur 2026
@@ -652,7 +663,8 @@ function simulate(P, B, I, opt) {
     const pm = 0.09 * I.pen[t] + 0.4 * I.tariff[t] - 0.6 * eur, dpm = pm - S.pm, pmNE = 0.4 * I.tariff[t] - 0.6 * eur;
     S.eduC = S.eduC * 0.97 + I.eduCum[t];
     S.penSm = 0.5 * S.penSm + 0.5 * I.pen[t];
-    const tfp = I.tfp[t] + P.educTfp * S.eduC * Math.min(1, t / 10) * 0.35 - P.enPot / 10 * S.penSm + lam * P.verdoorn * S.y;
+    const tarE = S.tarE + 0.3 * (I.tariff[t] - S.tarE); // les droits de douane désorganisent peu à peu les filières
+    const tfp = I.tfp[t] + P.educTfp * S.eduC * Math.min(1, t / 10) * 0.35 - P.enPot / 10 * S.penSm + lam * P.verdoorn * S.y - P.tarTfp / 0.83 * tarE;
     const dprod = tfp - S.tfpE;
     const lfs = I.lfs[t], nairu = I.nairu[t], hrs = I.hrs[t], dhrs = I.hrs[t] - I.hrs[t - 1];
     const dpInd = (I.pInd[t] - I.pInd[t - 1]) + 0; const dpE = (I.pE[t] - I.pE[t - 1]) + 0.01 * (I.pen[t] - I.pen[t - 1]);
@@ -663,7 +675,11 @@ function simulate(P, B, I, opt) {
     const ixs = Math.max(0, Math.min(1, I.idxw[t] / 100)), ix = P.idxW + (1 - P.idxW) * ixs, ix2 = P.idxW2 * (1 - ixs);
     const cDn = new Array(10).fill(0); let cOth = 0;
     const jdTarget = I.jobs[t]; const jd = S.jd + 0.45 * (jdTarget - S.jd);
-    const eSupPct = (1 - lam) * (P.supplyDirect * 0.67 * lfs + 0), ySup = (1 - lam) * (P.supplyDirect * (0.67 * lfs * 0.8 + tfp * 0.5)) + (1 - lam) * P.hrsOut * Math.max(0, hrs);
+    // âge de la retraite : la plupart des personnes concernées gardent (ou quittent) un emploi. La lecture offre les absorbe déjà ; en lecture demande, l'effet direct s'efface à mesure que les entreprises ajustent leurs embauches
+    const keepPct = S.keep * (1 - lam * P.ageFade) + lam * P.ageKeep * (I.lfsA[t] - I.lfsA[t - 1]), keptK = keepPct / 100 * B.LF[t];
+    // heures en plus : les débouchés se gagnent en plusieurs années
+    const hOut = S.hOut + P.hrsSpeed * (Math.max(0, hrs) - S.hOut);
+    const eSupPct = (1 - lam) * (P.supplyDirect * 0.67 * lfs + 0) + keepPct * B.LF[t] / B.E[t], ySup = (1 - lam) * (P.supplyDirect * (0.67 * lfs * 0.8 + tfp * 0.5)) + (1 - lam) * P.hrsOut * hOut;
     // crédit : encours de référence, canal bancaire, charge de la dette privée (nuls si le crédit n'est pas activé)
     const cr = P.credOn ? 1 : 0, DhB = D.dHh0 / 100 * B.Yn[t - 1], DfB = D.dFirm0 / 100 * B.Yn[t - 1];
     const aH = -cr * P.credRate / 100 * lend * DhB, aF = -cr * P.credRate / 100 * lend * DfB;
@@ -678,7 +694,7 @@ function simulate(P, B, I, opt) {
       e = S.e + P.lamE * (eStar - S.e);
       ePrivK = e / 100 * Epriv0 + jd + eSupPct / 100 * B.E[t];
       dE = ePrivK + gjobs + I.emp[t];
-      lfK = lfs / 100 * B.LF[t] + P.flex * (dE - eSupPct / 100 * B.E[t] * 0);
+      lfK = lfs / 100 * B.LF[t] + P.flex * (dE - keptK);
       du = -(dE - (1 - B.u[t] / 100) * lfK) / B.LF[t] * 100;
       // chômage plancher : en dessous d'un seuil, les postes ne trouvent plus preneur
       unf = 0; if (B.u[t] + du < P.uSoft) { const uC = P.uMin + (P.uSoft - P.uMin) * Math.exp(-(P.uSoft - B.u[t] - du) / (P.uSoft - P.uMin)); unf = (uC - B.u[t] - du) / 100 * B.LF[t]; dE -= unf; ePrivK -= unf; du = uC - B.u[t]; }
@@ -728,7 +744,7 @@ function simulate(P, B, I, opt) {
       const core = dpi - dpE - dpInd; const rr = 0.5 * (lend - 0.3 * core) + 0.5 * S.rr;
       const cOtg = I.csave[t] / nom + Cb * (-P.sigC * rr - P.precaution * du - I.conf[t] * 1.2 + I.cshock[t]) / 100 + P.wealth * D.EqW * eq / 100;
       cOth = P.lamC * cOtg + (1 - P.lamC) * S.cO * cgr;
-      const evA = ev * (dG + dIg); // éviction : dépense privée remplacée par la dépense publique
+      const evA = ev * (dG + dIg + I.ppbI[t]); // éviction : dépense privée remplacée par la dépense publique
       c = cInc + cOth + crC - 0.5 * evA;
       // Investissement
       ie = P.rhoI * S.ie + kap * (P.acc1 * ym - (P.acc1 - (1 - P.rhoI)) * S.ym) - P.aR * rr + P.aProf * (1 - P.demProf * lam) * margin * (1 - P.rhoI) + (I.ieff[t] - P.rhoI * I.ieff[t - 1]) + I.ieshock[t];
@@ -736,7 +752,7 @@ function simulate(P, B, I, opt) {
       dIe = ie / 100 * B.Ie[t] + crIe - 0.5 * evA; dIh = ih / 100 * B.Ih[t] + crIh;
       // Extérieur
       comp = 0.7 * (pht - (pw ? pw[t] : 0)) + 0.45 * eur;
-      x = P.xWd * wd - P.epsX * (0.5 * comp + 0.5 * S.comp) + I.xshock[t] - 0.3 * I.tariff[t] * (I.tariff[t] > 0 ? 1 : 0) * (opt.noRetal ? 0 : 1) + 0.25 * I.tour[t] * 0.07;
+      x = P.xWd * wd - P.epsX * (0.5 * comp + 0.5 * S.comp) + I.xshock[t] - P.tarRet * I.tariff[t] * (I.tariff[t] > 0 ? 1 : 0) * (opt.noRetal ? 0 : 1) + 0.25 * I.tour[t] * 0.07;
       dX = x / 100 * B.X[t] + ySup / 100 * Yb;
       dM = P.mc * c + P.mi * dIe + 0.18 * (dIh + dIg) + P.mg * dG + P.mx * (x / 100 * B.X[t]) + B.M[t] * (P.epsM * (pht - pmNE - 0.6 * I.tariff[t]) - 0.02 * I.pen[t]) / 100 + I.mImp[t];
       // plafonds : production non faite faute de bras, et surchauffe au-delà du potentiel ; la demande non servie part en importations
@@ -744,7 +760,7 @@ function simulate(P, B, I, opt) {
       const over = gT > P.capGap ? (gT - P.capGap - P.capRoom * (1 - Math.exp(-(gT - P.capGap) / P.capRoom))) / 100 * Yb : 0;
       dM += lost + over; const dY = dYr - lost - over;
       const yNew = dY / Yb * 100;
-      const dGw = 0.055 * gjobs + 0;
+      const dGw = 0.055 * gjobs + I.Gw[t];
       ym = (dY - dGw) / (0.78 * Yb) * 100;
       // Marges et actions
       const prodCyc = ym - (ePrivK / (Epriv0 * B.E[t] / D.E0) * 100);
@@ -782,7 +798,8 @@ function simulate(P, B, I, opt) {
     const Dd = S.Dd + dDef;
     const pgdp = p - 0.9 * P.aM * pm - (S.pEc + dpE) * 0.5;
     const Yn = B.Yn[t] * (1 + y / 100) * (1 + pgdp / 100);
-    const defMd = B.def[t] + dDef, debtMd = B.D[t] + Dd;
+    const pp = S.pp * 0.9 + I.ppbD[t]; // prêts du pôle public bancaire comptés dans la dette, si le réglage le demande
+    const defMd = B.def[t] + dDef, debtMd = B.D[t] + Dd + pp;
     // ----- Potentiel
     const k = S.k * 0.93 + 0.07 * (ie + crIe / B.Ie[t] * 100) - I.kdes[t];
     const kpub = S.kpub * 0.97 + dIg / (0.9 * Yb) * 100 - I.kdes[t] * 0.5;
@@ -803,7 +820,7 @@ function simulate(P, B, I, opt) {
     R.rdbA[t] = rdbA; R.rdbR[t] = rdbR;
     R.s80[t] = s80(D.dec.rdb.map((v, d) => v * (1 + hhD[d] / 100)));
     const Xn = B.X[t] * B.Pgdp[t], Mn = B.M[t] * B.Pgdp[t];
-    R.bal[t] = (B.bal[t] / 100 * B.Yn[t] + Xn * ((dX / B.X[t]) * 100 + 0.6 * pht) / 100 - Mn * ((dM / B.M[t]) * 100 + pm) / 100) / Yn * 100;
+    R.bal[t] = (B.bal[t] / 100 * B.Yn[t] + Xn * ((dX / B.X[t]) * 100 + 0.6 * pht) / 100 - Mn * ((dM / B.M[t]) * 100 + pm - 0.4 * I.tariff[t]) / 100) / Yn * 100;
     R.ecb[t] = B.ecb[t] + ecbDev; R.spread[t] = P.spreadBase + spreadDev; R.oat[t] = B.oat[t] + rl;
     R.cac[t] = B.cac[t] * (1 + eq / 100) * (1 + pgdp / 100);
     R.wageG[t] = B.wg[t] + dw; R.margin[t] = D.margin0 + margin;
@@ -900,7 +917,7 @@ function simulate(P, B, I, opt) {
     // ----- État suivant
     S.sanc = sancNext; S.cD = cDn.slice(); S.cO = cOth; S.c = c; S.ie = ie; S.ih = ih; S.x = x; S.p = p; S.pht = pht; S.pEc += dpE; S.w = w; S.e = e; S.jd = jd; S.k = k; S.kpub = kpub; S.hyst = hyst;
     S.DhDev = DhDev; S.DfDev = DfDev; S.rH = rH; S.rF = rF;
-    S.ulc = ulcNow; S.debtLvl = R.debt[t]; S.nh = S.nh + lam * P.demNairu * (du - nairu - S.nh); S.caDev = R.ca[t] - (B.bal[t] + otherInc - nrS * B.int[t] / B.Yn[t] * 100);
+    S.hOut = hOut; S.keep = keepPct; S.tarE = tarE; S.pp = pp; S.ulc = ulcNow; S.debtLvl = R.debt[t]; S.nh = S.nh + lam * P.demNairu * (du - nairu - S.nh); S.caDev = R.ca[t] - (B.bal[t] + otherInc - nrS * B.int[t] / B.Yn[t] * 100);
     S.y = y; S.ym = ym; S.dpi = dpi; S.iavg = iavgDev; S.Dd = Dd; S.debtR = R.debt[t] - B.D[t] / B.Yn[t] * 100; S.defR = R.def[t] - B.def[t] / B.Yn[t] * 100;
     S.rr = lend - 0.3 * (dpi - dpE - dpInd); S.rrl = rl - 0.3 * (dpi - dpE - dpInd); S.pm = pm; S.comp = comp; S.ebe = ebe; S.ystar = ystar; S.tfpE = tfp;
     prev = { C: B.C[t] + c, Ie: B.Ie[t] + dIe, X: B.X[t] + dX, M: B.M[t] + dM, Yr, paDev };

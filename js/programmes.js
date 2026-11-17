@@ -32,7 +32,7 @@ const lfiProg = () => {
     { lever: 'isge', value: 5, start: 2027, ramp: 1, nom: 'Taxe sur les superprofits', src: 'c' },
     { custom: 1, canal: 'c_revfin', montant: 8.5, eff: c, start: 2027, ramp: 1, nom: "Transactions financières (5 Md€), rachats d'actions (2,5), crypto-actifs (1)", src: 'c' },
     { custom: 1, canal: 'c_fraude', montant: 2, eff: [50, 100, 110], start: 2027, ramp: 1, nom: 'Lutte contre la fraude fiscale, première année', src: 'c' },
-    { sec: 'Mesures du programme sans montant publié', lever: 'smic', value: 15, start: 2027, ramp: 1, nom: 'SMIC à 1 700 € nets (+15 %)', src: 'm' },
+    { sec: 'Mesures du programme sans montant publié', lever: 'smic', value: 15, start: 2027, ramp: 1, nom: 'SMIC à 1 700 € nets (+15 % par rapport aux 1 478 € de juin 2026)', src: 'm' },
     { lever: 'idxsal', value: 100, start: 2027, ramp: 1, nom: "Indexation des salaires sur l'inflation", src: 'm' },
     { bar: { ir: copyBar(M.IR_LFI), csg: copyBar(M.CSG_LFI), garde: 4000 }, start: 2028, ramp: 1, nom: 'Révolution fiscale : impôt sur le revenu et CSG à 14 tranches', src: 'm' },
     { lever: 'ppb', value: 100, start: 2028, ramp: 3, nom: 'Pôle public bancaire : 100 Md€ de financements en plus par an', src: 'm' },
