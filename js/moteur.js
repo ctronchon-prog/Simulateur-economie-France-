@@ -108,8 +108,10 @@ const PARAMS = [
   ['gap2026', 'Écart de production 2026 (% du potentiel)', -0.9, -4, 2, 0.1, 'Référence', 0, ''],
   ['gapClose', 'Rattrapage spontané vers le potentiel (vitesse)', 0.3, 0, 1, 0.05, 'Moteur de long terme', 1, 'Zéro : pas de rattrapage sans demande supplémentaire'],
   ['ondam', 'Tendance des dépenses maladie (%/an, valeur)', 3.3, 1, 5, 0.1, 'Référence', 0, ''],
-  ['kappa', 'Coefficient multiplicateur (ajustement)', 1.3, 0.3, 2.5, 0.05, 'Demande', 1, 'Rapproche de 100 % la part du revenu consommée par chaque dixième, sans jamais la dépasser, et amplifie l\'accélérateur d\'investissement'],
-  ['mpcScale', 'Propension à consommer (ajustement)', 1.0, 0.5, 1.2, 0.05, 'Demande', 1, 'Multiplie la propension de chaque dixième : 98 % pour le premier, 28 % pour le dernier, avant ajustement'],
+  ['kappa', 'Coefficient multiplicateur', 1.3, 0.3, 2.5, 0.05, 'Demande', 1, 'Amplifie les tours suivants : la part redépensée des revenus que l\'activité crée, la même pour tous les dixièmes, et l\'investissement des entreprises. Ne change pas le premier tour, fixé par la propension de chaque dixième. S\'applique en entier à la lecture demande ; le résultat central fait la moyenne avec la lecture offre, qui a son propre coefficient'],
+  ['multSep', 'Coefficient multiplicateur commun à tous les dixièmes', 1, 0, 1, 1, 'Multiplicateurs', 0, '0 : ancienne façon, où le coefficient rapprochait de 100 % la propension de chaque dixième', 1],
+  ['multNorm', 'Coefficient multiplicateur : valeur de référence', 1.15, 0.5, 2, 0.05, 'Multiplicateurs', 0, 'Valeur du coefficient pour laquelle chaque dixième dépense exactement sa propension'],
+  ['mpcScale', 'Propension à consommer (ajustement)', 1.0, 0.5, 1.2, 0.05, 'Demande', 1, 'Part d\'un euro de revenu en plus que chaque dixième dépense dans l\'année : de 98 % pour le dixième le plus modeste à 28 % pour le plus aisé, avant ajustement, et jamais plus de 100 %. Joue au premier tour comme aux suivants'],
   ['mc', 'Contenu en importations de la consommation', 0.2, 0.1, 0.45, 0.01, 'Demande', 1, 'Fuite par les importations'],
   ['mi', 'Contenu en importations de l\'investissement', 0.34, 0.1, 0.6, 0.01, 'Demande', 0, ''],
   ['mg', 'Contenu en importations de la dépense publique', 0.10, 0.02, 0.3, 0.01, 'Demande', 0, ''],
@@ -187,7 +189,7 @@ const PARAMS = [
   ['demNairu', 'Lecture demande : vitesse à laquelle le chômage structurel suit le chômage', 0.4, 0, 1, 0.05, 'Lecture du long terme', 0, 'Économie « à haute pression »'],
   ['verdoorn', 'Lecture demande : gain de productivité pour 1 % d\'activité en plus', 0.3, 0, 0.6, 0.05, 'Lecture du long terme', 0, 'Loi de Kaldor-Verdoorn : estimations entre 0,3 et 0,5'],
   ['extSpread', 'Lecture demande : hausse du taux d\'emprunt par point de solde courant perdu', 0.1, 0, 0.5, 0.05, 'Lecture du long terme', 0, 'Frein extérieur. Convention de la maquette'],
-  ['kappaS', 'Lecture offre : coefficient multiplicateur', 0.5, 0.3, 2.5, 0.05, 'Multiplicateurs', 1, 'En lecture demande, c\'est le coefficient multiplicateur général qui s\'applique ; à mi-chemin, la moyenne des deux'],
+  ['kappaS', 'Lecture offre : coefficient multiplicateur', 0.8, 0.3, 2.5, 0.05, 'Multiplicateurs', 1, 'Plus bas qu\'en lecture demande : les ménages épargnent davantage un surcroît de revenu en attendant des impôts futurs, et la dépense publique remplace en partie la dépense privée. Agit sur tous les tours. En lecture demande, c\'est le coefficient multiplicateur général qui s\'applique ; à mi-chemin, la moyenne des deux'],
   ['evict', 'Lecture offre : part de la dépense publique qui remplace de la dépense privée (éviction)', 0.35, 0, 0.7, 0.05, 'Multiplicateurs', 1, 'Zéro en lecture demande. Avec 0,35, un euro de dépense publique fait environ 0,7 euro de PIB la première année'],
   ['capGap', 'Surchauffe : écart au potentiel à partir duquel la production plafonne (% du PIB)', 1.5, 0, 99, 0.5, 'Limites', 0, 'Au-delà, la demande part en importations. 99 : pas de plafond'],
   ['capRoom', 'Surchauffe : marge maximale au-dessus de ce seuil (% du PIB)', 2.5, 0.5, 6, 0.5, 'Limites', 0, 'Depuis 1980, l\'écart au potentiel estimé pour la France n\'a pas dépassé 3 à 4 %'],
@@ -688,7 +690,7 @@ function simulate(P, B, I, opt) {
     const ecbDev = I.ecb[t] + P.tayFr * S.dpi; // la BCE réagit à l'inflation française, à proportion du poids de la France
     const sancSpread = S.sanc ? P.sanctionSpread : 0;
     const lam = P.demLed || 0; // 0 : l'offre fixe le potentiel ; 1 : le potentiel suit la demande
-    const kap = P.kappaS + lam * (P.kappa - P.kappaS), ev = P.evict * (1 - lam); // multiplicateurs : plus faibles en lecture offre
+    const kap = P.kappaS + lam * (P.kappa - P.kappaS), kapD = P.kappaS + lam * (P.multNorm - P.kappaS), ev = P.evict * (1 - lam); // multiplicateurs : plus faibles en lecture offre
     const amp = Math.exp(P.mktConv * Math.max(0, S.debtLvl - P.mktBase)); // marchés plus nerveux quand la dette est haute
     const sBase = (P.sDebt * S.debtR + P.sDef * S.defR) * amp, spreadDev = sBase * (I.mktAsym && sBase < 0 ? 1 / (I.mkt || 1) : (I.mkt || 1)) + I.spread[t] + sancSpread + lam * P.extSpread * Math.max(0, -S.caDev);
     const rl = P.passLong * ecbDev + spreadDev + P.fisher * S.dpi, rs = ecbDev; // le taux long compense une part de l'inflation
@@ -769,8 +771,12 @@ function simulate(P, B, I, opt) {
         pD[d] = p + (dc.tiltE[d] - 1) * pEc;
         const real = ((base + dn) / (1 + pD[d] / 100) - base) / nom; // Md€ 2026 réels
         hhD[d] = real / (D.RDB * dc.rdb[d]) * 100; rdbrTot += real;
-        const mp = 1 - Math.pow(1 - Math.min(0.999, P.mpcScale * dc.mpc[d]), kap), ld = Math.min(1, dc.lamD[d] * P.lamC / 0.75);
-        cDn[d] = ld * mp * real + (1 - ld) * S.cD[d] * cgr; cInc += cDn[d];
+        const m1 = Math.min(0.999, P.mpcScale * dc.mpc[d]), ld = Math.min(1, dc.lamD[d] * P.lamC / 0.75);
+        if (P.multSep) { // premier tour (revenu versé ou prélevé par la mesure) : propension du dixième ; tours suivants (revenus créés par l'activité) : amplifiés par le coefficient multiplicateur, le même pour tous
+          const rDir = I.hh[d][t] / (1 + pD[d] / 100) / nom, mpD = Math.min(0.999, m1 * kapD / P.multNorm), mpI = Math.min(0.999, m1 * kap / P.multNorm);
+          cDn[d] = ld * (mpD * rDir + mpI * (real - rDir)) + (1 - ld) * S.cD[d] * cgr;
+        } else cDn[d] = ld * (1 - Math.pow(1 - m1, kap)) * real + (1 - ld) * S.cD[d] * cgr;
+        cInc += cDn[d];
       }
       const actBase = (D.MSpriv + D.MSpub) * D.netfac + D.Mixed + 0.85 * D.Ben + 0.55 * D.CapInc - 0.78 * D.R0.ir - 0.76 * D.R0.csg;
       const retBase = D.Pens + 0.15 * D.Ben + 0.45 * D.CapInc - 0.22 * D.R0.ir - 0.24 * D.R0.csg;
