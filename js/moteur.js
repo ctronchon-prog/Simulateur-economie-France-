@@ -170,6 +170,7 @@ const PARAMS = [
   ['optCost', 'Scénario optimiste : coûts', 0.95, 0.6, 1, 0.05, 'Fourchettes', 0, ''],
   ['pessSupply', 'Scénario pessimiste : effets d\'offre obtenus', 0.5, 0, 1, 0.05, 'Fourchettes', 0, ''],
   ['optSupply', 'Scénario optimiste : effets d\'offre obtenus', 1.25, 1, 2, 0.05, 'Fourchettes', 0, ''],
+  ['scenCompta', 'Rendement des mesures : n\'agit que sur les comptes publics', 1, 0, 1, 1, 'Fourchettes', 0, 'Une recette qui rapporte moins que prévu, une économie qui fuit ou un surcoût ne changent pas ce que la mesure fait aux ménages et aux entreprises : seul le solde public en pâtit. Effets d\'offre et réaction des marchés jouent contre le programme dans le scénario pessimiste, pour lui dans l\'optimiste. 0 : ancienne façon, où une recette manquée restait dans la poche des contribuables', 1],
   ['pessMkt', 'Scénario pessimiste : nervosité des marchés', 1.5, 1, 3, 0.1, 'Fourchettes', 0, ''],
   ['optMkt', 'Scénario optimiste : nervosité des marchés', 0.75, 0.2, 1, 0.05, 'Fourchettes', 0, ''],
   ['euCap', 'Plafond européen de dépense primaire nette (%/an, valeur)', 1.2, 0, 4, 0.1, 'Europe', 0, 'Seuil d\'alerte, à ajuster selon la trajectoire négociée'],
@@ -558,9 +559,27 @@ const PARTW = { wDE: 0.13, wIT: 0.08, wES: 0.075, wUS: 0.08, wCN: 0.07 };
 
 /* ---------- Construction des impulsions ---------- */
 function scenFactors(P, s) {
-  if (s === 'pess') return { good: P.pessYield, bad: P.pessCost, sup: P.pessSupply, mkt: P.pessMkt, k: 0 };
-  if (s === 'opt') return { good: P.optYield, bad: P.optCost, sup: P.optSupply, mkt: P.optMkt, k: 2 };
-  return { good: 1, bad: 1, sup: 1, mkt: 1, k: 1 };
+  if (s === 'pess') return { good: P.pessYield, bad: P.pessCost, sup: P.pessSupply, supDn: 2 - P.pessSupply, mkt: P.pessMkt, k: 0, cpt: P.scenCompta };
+  if (s === 'opt') return { good: P.optYield, bad: P.optCost, sup: P.optSupply, supDn: 2 - P.optSupply, mkt: P.optMkt, k: 2, cpt: P.scenCompta };
+  return { good: 1, bad: 1, sup: 1, supDn: 1, mkt: 1, k: 1, cpt: 0 };
+}
+/* Rendement des mesures (scénarios pessimiste et optimiste).
+   L'effet sur l'économie est celui de la mesure annoncée ; l'écart de rendement ne touche que les comptes publics.
+   Effets d'offre : le scénario réduit ceux qui servent l'économie et grossit ceux qui la desservent (et l'inverse en optimiste). */
+const SUP_BAD = { nairu: 1 }; // canaux d'offre où une hausse dessert l'économie
+function rec() { const R = { ops: [] }; ['rev', 'spend', 'hh', 'transfer', 'hhv', 'add'].forEach(k => R[k] = (...a) => R.ops.push([k, a])); return R; }
+function scenApply(A, F, sf, call) { // call(acc, r, sup)
+  const e1 = rec(); call(e1, 1, 1);
+  let e0 = null; if (F.sup !== 1) { e0 = rec(); call(e0, 1, 0); if (e0.ops.length !== e1.ops.length) e0 = null; }
+  e1.ops.forEach(([k, a], i) => {
+    if (k === 'add' && e0) { const d = a[1] - e0.ops[i][1][1]; if (d) { const bad = SUP_BAD[a[0]] ? d > 0 : d < 0; A.add(a[0], e0.ops[i][1][1] + d * (bad ? F.supDn : F.sup)); return; } }
+    A[k](...a);
+  });
+  if (sf === 1) return;
+  const b = rec(); call(b, sf, 1); if (b.ops.length !== e1.ops.length) return;
+  b.ops.forEach(([k, a], i) => { const a1 = e1.ops[i][1];
+    if (k === 'rev' || k === 'spend') { const d = a[1] - a1[1]; if (d) A[k](a[0], d, a[2], a[3]); }
+    else if (k === 'transfer') { const d = a[2] - a1[2]; if (d) A.transfer(a[0], a[1], d); } });
 }
 function phase(m, t) { // t : indice d'année
   const s = Math.max(1, (m.start || 2027) - 2026); if (t < s) return 0;
@@ -578,18 +597,20 @@ function buildImpulses(P, B, prog, shocks, pilot, scen) {
   (prog && prog.measures || []).forEach(m => {
     if (m.off) return;
     if (m.bar) {
-      const info = MICRO.bareme(m.bar, P.eti), g = v => v > 0 ? v * F.good : v, ir = info.dIRd.map(g), cs = info.dCSGd.map(g);
+      const info = MICRO.bareme(m.bar, P.eti), g = v => v > 0 ? v * F.good : v, ir = info.dIRd.map(g), cs = info.dCSGd.map(g), irE = F.cpt ? info.dIRd : ir, csE = F.cpt ? info.dCSGd : cs, sE = F.cpt ? (sum(info.dIRd) + sum(info.dCSGd)) : 0;
       for (let t = 1; t < N; t++) { const f = phase(m, t); if (!f) continue; const k = f * B.Yn[t] / B.Yn[1], sIR = sum(ir) * k, sCS = sum(cs) * k, A = acc(I, t);
         A.rev('ir', sIR); A.rev('csg', sCS, { secu: 1 }, { mal: .45, fam: .10, vie: .15, aut: .12, une: .11 });
-        A.hhv(ir, -k, -sIR * info.actIR, -sIR * (1 - info.actIR)); A.hhv(cs, -k, -sCS * info.actCSG, -sCS * (1 - info.actCSG)); }
+        const eIR = sum(irE) * k, eCS = sum(csE) * k; A.hhv(irE, -k, -eIR * info.actIR, -eIR * (1 - info.actIR)); A.hhv(csE, -k, -eCS * info.actCSG, -eCS * (1 - info.actCSG)); }
       return;
     }
     if (m.ass) {
       const info = assInfo(m); if (!info || !info.md) return;
       const hasCh = m.chiffre !== undefined && m.chiffre !== null && m.chiffre !== '', ratio = hasCh ? Math.abs(+m.chiffre) / Math.abs(info.md) : 1;
       for (let t = 1; t < N; t++) { const f = phase(m, t); if (!f) continue; const idx = B.Yn[t] / B.Yn[1], A = acc(I, t);
-        if (info.a.kind === 'cash') { const cost = -info.md * f * idx * ratio * (info.md < 0 ? F.bad : F.good); A.spend('presta', cost, info.a.split, info.a.br); A.hhv(info.x.dec, cost, cost * info.x.act, cost * (1 - info.x.act)); }
-        else info.a.fx(A, info.md * f * idx * ratio * (info.md > 0 ? F.good : F.bad), info.x, P, { idx, sup: F.sup }); }
+        const sfA = info.md < 0 ? F.bad : F.good;
+        if (info.a.kind === 'cash') { const cost = -info.md * f * idx * ratio * sfA, costE = F.cpt ? -info.md * f * idx * ratio : cost; A.spend('presta', cost, info.a.split, info.a.br); A.hhv(info.x.dec, costE, costE * info.x.act, costE * (1 - info.x.act)); }
+        else if (F.cpt) scenApply(A, F, sfA, (Z2, r, sup) => info.a.fx(Z2, info.md * f * idx * ratio * r, info.x, P, { idx, sup }));
+        else info.a.fx(A, info.md * f * idx * ratio * sfA, info.x, P, { idx, sup: F.sup }); }
       return;
     }
     let lev, val, r0 = null;
@@ -610,7 +631,8 @@ function buildImpulses(P, B, prog, shocks, pilot, scen) {
       if (lev.cumul) u = val * Math.max(0, t - s0 + (t === 1 ? 0.5 : 1));
       const sf = r0 !== null ? r0 : (lev.sens ? (lev.sens * val > 0 ? F.good : F.bad) : 1);
       const A = acc(I, t);
-      lev.fx(A, u, P, { idx: B.Yn[t] / B.Yn[1], r: sf * ratio, sup: r0 !== null ? r0 : F.sup });
+      if (F.cpt && r0 === null) scenApply(A, F, sf, (Z2, r, sup) => lev.fx(Z2, u, P, { idx: B.Yn[t] / B.Yn[1], r: r * ratio, sup }));
+      else lev.fx(A, u, P, { idx: B.Yn[t] / B.Yn[1], r: sf * ratio, sup: r0 !== null ? r0 : F.sup });
     }
   });
   (shocks || []).forEach(s => { if (!s.on) return; const def = SHOCKS.find(x => x.id === s.id); const t = Math.max(1, (s.year || 2028) - 2026); if (def && t < N) def.fx(I, t, s.level || 0, P); });
@@ -620,7 +642,7 @@ function buildImpulses(P, B, prog, shocks, pilot, scen) {
     const t0 = Math.max(1, ((pilot.from && pilot.from[p.id]) || 2027) - 2026);
     for (let t = t0; t < N; t++) I[p.id][t] += dv;
   });
-  I.mkt = F.mkt;
+  I.mkt = F.mkt; I.mktAsym = F.cpt;
   return I;
 }
 
@@ -668,7 +690,7 @@ function simulate(P, B, I, opt) {
     const lam = P.demLed || 0; // 0 : l'offre fixe le potentiel ; 1 : le potentiel suit la demande
     const kap = P.kappaS + lam * (P.kappa - P.kappaS), ev = P.evict * (1 - lam); // multiplicateurs : plus faibles en lecture offre
     const amp = Math.exp(P.mktConv * Math.max(0, S.debtLvl - P.mktBase)); // marchés plus nerveux quand la dette est haute
-    const spreadDev = (P.sDebt * S.debtR + P.sDef * S.defR) * amp * (I.mkt || 1) + I.spread[t] + sancSpread + lam * P.extSpread * Math.max(0, -S.caDev);
+    const sBase = (P.sDebt * S.debtR + P.sDef * S.defR) * amp, spreadDev = sBase * (I.mktAsym && sBase < 0 ? 1 / (I.mkt || 1) : (I.mkt || 1)) + I.spread[t] + sancSpread + lam * P.extSpread * Math.max(0, -S.caDev);
     const rl = P.passLong * ecbDev + spreadDev + P.fisher * S.dpi, rs = ecbDev; // le taux long compense une part de l'inflation
     const lend = 0.5 * rs + 0.5 * rl + I.cspread[t];
     const wd = I.wd[t] - P.ecbWd * 0.5 * (I.ecb[t] + I.ecb[t - 1]);
