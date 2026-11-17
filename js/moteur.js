@@ -214,6 +214,12 @@ const PARAMS = [
   ['tarTfp', 'Droits de douane : perte de productivité par point de droits, au bout de cinq ans (%)', 0.06, 0, 0.12, 0.01, 'Extérieur', 0, 'Sur 151 pays de 1963 à 2014, le FMI (Furceri et al.) trouve une perte de production d\'environ 0,1 % par point de droits au bout de cinq ans'],
   ['pubHire', 'Santé, éducation : part de la masse salariale en plus qui va à des embauches', 0.5, 0, 1, 0.05, 'Emploi', 0, 'Le reste revalorise les salaires'],
   ['gwOut', 'Santé, éducation : salaires publics comptés comme emploi public et non comme commandes aux entreprises', 1, 0, 1, 1, 'Multiplicateurs', 0, 'Évite de compter deux fois le revenu des agents', 1],
+  ['wDE0', 'Allemagne : hausse annuelle du coût du travail supposée dans la référence (%)', 3.4, 0, 10, 0.1, 'Extérieur', 0, 'Coût horaire dans l\'industrie : 42,1 € en 2020, 49,8 € en 2025 (Insee, Eurostat). France sur la même période : 2,6 % par an'],
+  ['wIT0', 'Italie : hausse annuelle du coût du travail supposée dans la référence (%)', 2.5, 0, 10, 0.1, 'Extérieur', 0, 'Coût horaire dans l\'industrie : 29,2 € en 2020, 33,0 € en 2025 (Insee, Eurostat)'],
+  ['wES0', 'Espagne : hausse annuelle du coût du travail supposée dans la référence (%)', 3.0, 0, 10, 0.1, 'Extérieur', 0, 'Coût horaire dans l\'industrie : 24,8 € en 2020, 28,7 € en 2025 (Insee, Eurostat)'],
+  ['wUS0', 'États-Unis : hausse annuelle du coût du travail supposée dans la référence (%)', 4.1, 0, 10, 0.1, 'Extérieur', 0, 'Indice du coût de l\'emploi, secteur privé, en dollars : moyenne des hausses annuelles de 2021 à 2025 (BLS)'],
+  ['wCN0', 'Chine : hausse annuelle du coût du travail supposée dans la référence (%)', 6.5, 0, 12, 0.1, 'Extérieur', 0, 'Salaire moyen des unités urbaines non privées, en yuans : moyenne des hausses annuelles de 2020 à 2024 (Bureau national des statistiques)'],
+  ['partPass', 'Partenaires : part d\'une hausse de leur coût du travail qui passe dans leurs prix', 0.55, 0, 1, 0.05, 'Extérieur', 0, 'Même valeur que pour la France'],
   ['smicHi', 'SMIC : élasticité de l\'emploi peu qualifié au-delà de +15 %', 0.3, 0, 1, 0.05, 'Emploi', 0, 'L\'estimation retenue pour le SMIC vaut pour des hausses modérées ; au-delà, de plus en plus de salariés sont concernés'],
   ['taxSat', 'Impôts sur le capital et les hauts revenus : rendement qui plafonne aux fortes doses', 1, 0, 1, 1, 'Limites', 0, '1 : oui. 0 : chaque euro voté rentre'],
   ['credServ', 'Dépense en moins par euro d\'intérêts privés en plus', 0.3, 0, 1, 0.05, 'Dette privée et crédit', 0, 'Poids de la charge de la dette privée. N\'agit que si le crédit est activé']
@@ -287,7 +293,7 @@ function baseline(P) {
 }
 
 /* ---------- Accumulateur d'impulsions ---------- */
-const CH = ['G', 'Ig', 'pInd', 'pE', 'firmMargin', 'ucost', 'ieff', 'smic', 'lfs', 'tfp', 'nairu', 'jobs', 'gjobs', 'wd', 'pen', 'eur', 'spread', 'cspread', 'eq', 'cshock', 'ieshock', 'ihshock', 'xshock', 'kdes', 'ecb', 'conf', 'tariff', 'emp', 'wshock', 'defDem', 'tour', 'agri', 'tech', 'attr', 'isAmt', 'isGe', 'prodAmt', 'cotLowAmt', 'eduCum', 'mImp', 'idxw', 'hrs', 'csave', 'lfsA', 'Gw', 'ppbI', 'ppbD'];
+const CH = ['G', 'Ig', 'pInd', 'pE', 'firmMargin', 'ucost', 'ieff', 'smic', 'lfs', 'tfp', 'nairu', 'jobs', 'gjobs', 'wd', 'pen', 'eur', 'spread', 'cspread', 'eq', 'cshock', 'ieshock', 'ihshock', 'xshock', 'kdes', 'ecb', 'conf', 'tariff', 'emp', 'wshock', 'defDem', 'tour', 'agri', 'tech', 'attr', 'isAmt', 'isGe', 'prodAmt', 'cotLowAmt', 'eduCum', 'mImp', 'idxw', 'hrs', 'csave', 'lfsA', 'Gw', 'ppbI', 'ppbD', 'wDE', 'wIT', 'wES', 'wUS', 'wCN'];
 function newImp() {
   const I = { hh: D.dec.rdb.map(() => Z()), hhA: Z(), hhR: Z(), rev: {}, spend: {}, sub: { etat: Z(), ct: Z(), secu: Z() }, br: {} };
   Object.keys(D.R0).forEach(k => I.rev[k] = Z()); Object.keys(D.S0).forEach(k => I.spend[k] = Z());
@@ -540,8 +546,15 @@ const PILOT = [
   { id: 'emp', nom: 'Emploi, choc direct', unit: 'milliers', min: -1000, max: 1000, step: 25, def: 0 },
   { id: 'tfp', nom: 'Productivité, choc de niveau', unit: '%', min: -5, max: 8, step: 0.25, def: 0 },
   { id: 'conf', nom: 'Taux d\'épargne des ménages, choc', unit: 'pts', min: -4, max: 6, step: 0.25, def: 0 },
-  { id: 'wshock', nom: 'Salaires du privé, choc de niveau', unit: '%', min: -5, max: 10, step: 0.5, def: 0 }
+  { id: 'wshock', nom: 'Salaires du privé, choc de niveau', unit: '%', min: -5, max: 10, step: 0.5, def: 0 },
+  { id: 'wDE', part: 1, pays: 'Allemagne', nom: 'Allemagne : hausse annuelle du coût du travail', unit: '% par an', min: 0, max: 8, step: 0.1, def: null, abs: 'wDE0' },
+  { id: 'wIT', part: 1, pays: 'Italie', nom: 'Italie : hausse annuelle du coût du travail', unit: '% par an', min: 0, max: 8, step: 0.1, def: null, abs: 'wIT0' },
+  { id: 'wES', part: 1, pays: 'Espagne', nom: 'Espagne : hausse annuelle du coût du travail', unit: '% par an', min: 0, max: 8, step: 0.1, def: null, abs: 'wES0' },
+  { id: 'wUS', part: 1, pays: 'États-Unis', nom: 'États-Unis : hausse annuelle du coût du travail', unit: '% par an', min: 0, max: 8, step: 0.1, def: null, abs: 'wUS0' },
+  { id: 'wCN', part: 1, pays: 'Chine', nom: 'Chine : hausse annuelle du coût du travail', unit: '% par an', min: 0, max: 12, step: 0.1, def: null, abs: 'wCN0' }
 ];
+// poids des partenaires : part dans les échanges de biens de la France en 2024 (douanes, direction du Trésor)
+const PARTW = { wDE: 0.13, wIT: 0.08, wES: 0.075, wUS: 0.08, wCN: 0.07 };
 
 /* ---------- Construction des impulsions ---------- */
 function scenFactors(P, s) {
@@ -624,7 +637,7 @@ function simulate(P, B, I, opt) {
   R.size = {}; SIZES.forEach(s => R.size[s.id] = { va: Z(), emp: Z(), inv: Z(), margin: Z() });
   R.trv = {}; TRANSV.forEach(s => R.trv[s.id] = { va: Z(), emp: Z(), inv: Z() });
   R.alerts = YEARS.map(() => []);
-  const S = { cD: new Array(10).fill(0), cO: 0, penSm: 0, rr: 0, rrl: 0, c: 0, ie: 0, ih: 0, x: 0, p: 0, pht: 0, pEc: 0, pIc: 0, w: 0, e: 0, jd: 0, k: 0, kpub: 0, hyst: 0, y: 0, ym: 0, dpi: 0, iavg: 0, Dd: 0, debtR: 0, defR: 0, pm: 0, comp: 0, ebe: 0, ystar: 0, sanc: 0, eduC: 0, pPrev: 0, secE: {}, sizeE: {}, lvlPa: 1, tfpE: 0, DhDev: 0, DfDev: 0, rH: 0, rF: 0, nh: 0, caDev: 0, ulc: 0, hOut: 0, keep: 0, tarE: 0, pp: 0, debtLvl: B.D[0] / B.Yn[0] * 100, prevDef: null, prevPrev: null, npePrev: B.dep[0] - B.int[0] };
+  const S = { cD: new Array(10).fill(0), cO: 0, penSm: 0, rr: 0, rrl: 0, c: 0, ie: 0, ih: 0, x: 0, p: 0, pht: 0, pEc: 0, pIc: 0, w: 0, e: 0, jd: 0, k: 0, kpub: 0, hyst: 0, y: 0, ym: 0, dpi: 0, iavg: 0, Dd: 0, debtR: 0, defR: 0, pm: 0, comp: 0, ebe: 0, ystar: 0, sanc: 0, eduC: 0, pPrev: 0, secE: {}, sizeE: {}, lvlPa: 1, tfpE: 0, DhDev: 0, DfDev: 0, rH: 0, rF: 0, nh: 0, caDev: 0, ulc: 0, part: 0, hOut: 0, keep: 0, tarE: 0, pp: 0, debtLvl: B.D[0] / B.Yn[0] * 100, prevDef: null, prevPrev: null, npePrev: B.dep[0] - B.int[0] };
   // lecture Keen : soldes sectoriels et dette privée
   const nrS = P.nrShare / 100, hhB0 = (D.RDB / D.Y0 - D.sh.C - D.sh.Ih) * 100;
   const otherInc = D.ca0 - B.bal[0] + nrS * B.int[0] / B.Yn[0] * 100; // revenus et transferts hors intérêts publics, % du PIB, calé sur 2026
@@ -660,7 +673,9 @@ function simulate(P, B, I, opt) {
     const lend = 0.5 * rs + 0.5 * rl + I.cspread[t];
     const wd = I.wd[t] - P.ecbWd * 0.5 * (I.ecb[t] + I.ecb[t - 1]);
     const eur = I.eur[t] + P.ecbEur * ecbDev;
-    const pm = 0.09 * I.pen[t] + 0.4 * I.tariff[t] - 0.6 * eur, dpm = pm - S.pm, pmNE = 0.4 * I.tariff[t] - 0.6 * eur;
+    // coût du travail des partenaires : l'écart à la trajectoire de référence se cumule d'année en année et passe en partie dans leurs prix
+    let partNow = S.part; Object.keys(PARTW).forEach(k => { partNow += PARTW[k] * I[k][t]; }); const pPart = P.partPass * partNow;
+    const pm = 0.09 * I.pen[t] + 0.4 * I.tariff[t] - 0.6 * eur + pPart, dpm = pm - S.pm, pmNE = 0.4 * I.tariff[t] - 0.6 * eur + pPart;
     S.eduC = S.eduC * 0.97 + I.eduCum[t];
     S.penSm = 0.5 * S.penSm + 0.5 * I.pen[t];
     const tarE = S.tarE + 0.3 * (I.tariff[t] - S.tarE); // les droits de douane désorganisent peu à peu les filières
@@ -751,7 +766,7 @@ function simulate(P, B, I, opt) {
       ih = 0.4 * S.ih + 0.5 * (rdbrTot / D.RDB * 100) - P.hR * (0.5 * (rl - 0.3 * core) + 0.5 * S.rrl) + I.ihshock[t];
       dIe = ie / 100 * B.Ie[t] + crIe - 0.5 * evA; dIh = ih / 100 * B.Ih[t] + crIh;
       // Extérieur
-      comp = 0.7 * (pht - (pw ? pw[t] : 0)) + 0.45 * eur;
+      comp = 0.7 * (pht - (pw ? pw[t] : 0) - pPart) + 0.45 * eur;
       x = P.xWd * wd - P.epsX * (0.5 * comp + 0.5 * S.comp) + I.xshock[t] - P.tarRet * I.tariff[t] * (I.tariff[t] > 0 ? 1 : 0) * (opt.noRetal ? 0 : 1) + 0.25 * I.tour[t] * 0.07;
       dX = x / 100 * B.X[t] + ySup / 100 * Yb;
       dM = P.mc * c + P.mi * dIe + 0.18 * (dIh + dIg) + P.mg * dG + P.mx * (x / 100 * B.X[t]) + B.M[t] * (P.epsM * (pht - pmNE - 0.6 * I.tariff[t]) - 0.02 * I.pen[t]) / 100 + I.mImp[t];
@@ -917,7 +932,7 @@ function simulate(P, B, I, opt) {
     // ----- État suivant
     S.sanc = sancNext; S.cD = cDn.slice(); S.cO = cOth; S.c = c; S.ie = ie; S.ih = ih; S.x = x; S.p = p; S.pht = pht; S.pEc += dpE; S.w = w; S.e = e; S.jd = jd; S.k = k; S.kpub = kpub; S.hyst = hyst;
     S.DhDev = DhDev; S.DfDev = DfDev; S.rH = rH; S.rF = rF;
-    S.hOut = hOut; S.keep = keepPct; S.tarE = tarE; S.pp = pp; S.ulc = ulcNow; S.debtLvl = R.debt[t]; S.nh = S.nh + lam * P.demNairu * (du - nairu - S.nh); S.caDev = R.ca[t] - (B.bal[t] + otherInc - nrS * B.int[t] / B.Yn[t] * 100);
+    S.part = partNow; S.hOut = hOut; S.keep = keepPct; S.tarE = tarE; S.pp = pp; S.ulc = ulcNow; S.debtLvl = R.debt[t]; S.nh = S.nh + lam * P.demNairu * (du - nairu - S.nh); S.caDev = R.ca[t] - (B.bal[t] + otherInc - nrS * B.int[t] / B.Yn[t] * 100);
     S.y = y; S.ym = ym; S.dpi = dpi; S.iavg = iavgDev; S.Dd = Dd; S.debtR = R.debt[t] - B.D[t] / B.Yn[t] * 100; S.defR = R.def[t] - B.def[t] / B.Yn[t] * 100;
     S.rr = lend - 0.3 * (dpi - dpE - dpInd); S.rrl = rl - 0.3 * (dpi - dpE - dpInd); S.pm = pm; S.comp = comp; S.ebe = ebe; S.ystar = ystar; S.tfpE = tfp;
     prev = { C: B.C[t] + c, Ie: B.Ie[t] + dIe, X: B.X[t] + dX, M: B.M[t] + dM, Yr, paDev };
