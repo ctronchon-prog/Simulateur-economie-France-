@@ -4,7 +4,7 @@
 'use strict';
 const E = root.ENGINE || require('./moteur.js');
 const copyBar = b => b ? b.map(r => [r[0], r[1]]) : null;
-const LFI_DESC = "Extrapolation, pas un chiffrage officiel. Première partie : le contre-budget 2027 de La France insoumise, ligne à ligne, avec ses montants (81,7 Md€ de dépenses, 106,4 Md€ de recettes). Seconde partie : les mesures de L'Avenir en commun que ce document ne chiffre pas, avec des ordres de grandeur posés par la maquette, à corriger quand le chiffrage complet sera publié.";
+const LFI_DESC = "Extrapolation, pas un chiffrage officiel. Première partie : le contre-budget 2027 de La France insoumise, ligne à ligne, avec ses montants (81,7 Md€ de dépenses, 106,4 Md€ de recettes). Seconde partie : les mesures de L'Avenir en commun que ce document ne chiffre pas, avec des ordres de grandeur posés par la maquette, à corriger quand le chiffrage complet sera publié. Vérification du 18 novembre 2026 : LFI présente tout « dès 2027 » ; la maquette décale ce qui ne peut pas rentrer si vite (droits de succession payés dans les six mois du décès, flat tax régularisée l'année suivante, crédits d'impôt, conventions fiscales, retraite gelée à 62 ans et 9 mois jusqu'en 2028). Montants discutés, gardés tels quels : taxe Zucman (15 Md€ ; moins de 7,5 Md€ si l'on applique les pertes de comportement d'une note du Conseil d'analyse économique), impôt sur la fortune (10 Md€, le double de l'ISF de 2017), droits de succession (+20 Md€ pour 20,8 Md€ perçus en 2024).";
 const lfiProg = () => {
   const c = [75, 100, 110], M = E.MICRO;
   return { id: 'lfi', name: "LFI · L'Avenir en commun (extrapolation)", desc: LFI_DESC, measures: [
@@ -17,17 +17,18 @@ const lfiProg = () => {
     { lever: 'sante', value: 3, start: 2027, ramp: 1, nom: 'Hôpital : +3 Md€, 10 000 soignants', src: 'c' },
     { lever: 'gfonct', value: 11.6, start: 2027, ramp: 1, nom: 'Lutte contre les violences (4,6 Md€) et annulation des coupes depuis 2026 (7 Md€)', src: 'c' },
     { lever: 'ipub', value: 10, start: 2027, ramp: 1, nom: 'Adaptation au dérèglement climatique', src: 'c' },
-    { lever: 'age', value: -2, chiffre: 9, start: 2027, ramp: 1, nom: 'Abrogation de la retraite à 64 ans', src: 'c' },
+    { lever: 'age', value: -0.75, chiffre: 9, start: 2027, ramp: 1, was: 'Abrogation de la retraite à 64 ans', wasV: -2, nom: 'Abrogation de la retraite à 64 ans : 9 mois de moins dès 2027 (âge gelé à 62 ans et 9 mois jusqu\'en 2028)', src: 'c' },
+    { lever: 'age', value: -1.25, start: 2029, ramp: 4, was: 'Abrogation de la retraite à 64 ans', wasV: -2, nom: 'Abrogation de la retraite à 64 ans : écart porté à 2 ans d\'ici 2032, à mesure que l\'âge aurait dû monter', src: 'c' },
     { lever: 'chom', value: 3, start: 2027, ramp: 1, nom: "Abrogation des réformes de l'assurance chômage", src: 'c' },
-    { sec: 'Contre-budget 2027 : recettes', lever: 'capinc', value: 9, start: 2027, ramp: 1, nom: 'Suppression de la flat tax', src: 'c' },
+    { sec: 'Contre-budget 2027 : recettes', lever: 'capinc', value: 9, start: 2028, ramp: 2, was: 'Suppression de la flat tax', nom: 'Suppression de la flat tax (régularisation au barème l\'année suivante : moitié en 2028, plein en 2029)', src: 'c' },
     { lever: 'isf', value: 10, start: 2027, ramp: 1, nom: 'Impôt sur la fortune rétabli et renforcé', src: 'c' },
-    { lever: 'irtop', value: 11, start: 2027, ramp: 1, nom: 'Niches fiscales et sociales : part ménages (moitié des 22 Md€, répartition de la maquette)', src: 'c' },
-    { lever: 'subv', value: -11, start: 2027, ramp: 1, nom: 'Niches fiscales et sociales : part entreprises (moitié des 22 Md€, répartition de la maquette)', src: 'c' },
+    { lever: 'irtop', value: 11, start: 2028, ramp: 2, was: 'Niches fiscales et sociales : part ménages (moitié des 22 Md€, répartition de la maquette)', nom: 'Niches fiscales et sociales (crédits d\'impôt versés l\'année suivante) : part ménages (moitié des 22 Md€, répartition de la maquette)', src: 'c' },
+    { lever: 'subv', value: -11, start: 2028, ramp: 2, was: 'Niches fiscales et sociales : part entreprises (moitié des 22 Md€, répartition de la maquette)', nom: 'Niches fiscales et sociales (crédits d\'impôt versés l\'année suivante) : part entreprises (moitié des 22 Md€, répartition de la maquette)', src: 'c' },
     { lever: 'prodtax', value: 3, start: 2027, ramp: 1, nom: 'CVAE rétablie sur les plus grandes entreprises', src: 'c' },
     { ass: 'a_pat', lo: 100, hi: null, taux: 2, marg: 0, chiffre: 15, start: 2027, ramp: 1, nom: 'Taxe Zucman : 2 % du patrimoine au-delà de 100 M€', src: 'c' },
-    { lever: 'succ', value: 20, start: 2027, ramp: 1, nom: 'Réforme des droits de succession', src: 'c' },
+    { lever: 'succ', value: 20, start: 2028, ramp: 2, was: 'Réforme des droits de succession', nom: 'Réforme des droits de succession (droits payés dans les six mois du décès : moitié en 2028, plein en 2029)', src: 'c' },
     { lever: 'isge', value: 3, start: 2027, ramp: 1, nom: "Réforme de l'impôt sur les sociétés", src: 'c' },
-    { lever: 'isge', value: 5, start: 2027, ramp: 1, nom: 'Taxe universelle sur les multinationales', src: 'c' },
+    { lever: 'isge', value: 5, start: 2028, ramp: 3, was: 'Taxe universelle sur les multinationales', nom: 'Taxe universelle sur les multinationales (conventions fiscales à renégocier)', src: 'c' },
     { lever: 'isge', value: 3.9, start: 2027, ramp: 1, nom: 'Taxe sur les géants du numérique renforcée', src: 'c' },
     { lever: 'isge', value: 5, start: 2027, ramp: 1, nom: 'Taxe sur les superprofits', src: 'c' },
     { custom: 1, canal: 'c_revfin', montant: 8.5, eff: c, start: 2027, ramp: 1, nom: "Transactions financières (5 Md€), rachats d'actions (2,5), crypto-actifs (1)", src: 'c' },
@@ -49,7 +50,7 @@ const lfiProg = () => {
     { lever: 'isge', value: 5, start: 2028, ramp: 3, nom: 'Taxe universelle sur les multinationales, montée en charge', src: 'e' }
   ] };
 };
-const RN_DESC = "Extrapolation, pas un chiffrage officiel. Ossature : la trajectoire 2027-2032 présentée par Marine Le Pen le 6 octobre 2026, poste par poste, avec les montants du parti en 2031 tels que retranscrits par l'Institut de l'Entreprise (le document n'est pas en ligne). Les lignes « solde du poste » complètent chaque poste jusqu'au total annoncé ; leur ventilation est de la maquette. Le programme des législatives 2024 sert à nommer les mesures que le plan ne détaille pas. Là où les deux divergent (retraites), le plan de 2026 est retenu.";
+const RN_DESC = "Extrapolation, pas un chiffrage officiel. Ossature : la trajectoire 2027-2032 présentée par Marine Le Pen le 6 octobre 2026, poste par poste, avec les montants du parti en 2031 tels que retranscrits par l'Institut de l'Entreprise (le document n'est pas en ligne). Les lignes « solde du poste » complètent chaque poste jusqu'au total annoncé ; leur ventilation est de la maquette. Le programme des législatives 2024 sert à nommer les mesures que le plan ne détaille pas. Là où les deux divergent (retraites), le plan de 2026 est retenu. Vérification du 18 novembre 2026 : le plan est étalé jusqu'en 2032. La maquette décale la priorité nationale (révision constitutionnelle) et la contribution européenne (fixée pour 2027) à 2028, compte en entier la taxe sur les rachats d'actions en 2027 et limite la fin des soutiens aux renouvelables aux nouveaux contrats. Montants discutés, gardés tels quels : TVA à 5,5 % sur les carburants (contraire à la directive TVA), baisse unilatérale de la contribution européenne, 18 Md€ de fraude à la TVA (pour un écart total estimé à 20,9 Md€ toutes causes), 85 000 postes dans les agences (sur 401 000 emplois d'opérateurs) et 116 000 dans les collectivités (que l'État ne dirige pas).";
 const rnProg = () => {
   const c = [75, 100, 110];
   return { id: 'rn', name: 'RN · Le Pen (extrapolation)', desc: RN_DESC, measures: [
@@ -64,13 +65,13 @@ const rnProg = () => {
     { lever: 'subv', value: 3.9, start: 2027, ramp: 1, nom: "Autres allègements aux entreprises (solde de l'enveloppe de 21 Md€)", src: 'c' },
     { lever: 'subv', value: -9.9, start: 2027, ramp: 1, nom: 'Aides et niches des entreprises supprimées (solde du poste)', src: 'c' },
     { lever: 'isge', value: 5.6, start: 2027, ramp: 1, nom: "Grands groupes : impôt assis sur le chiffre d'affaires et surtaxes, net", src: 'c' },
-    { custom: 1, canal: 'c_revfin', montant: 11.35, eff: c, start: 2027, end: 2027, ramp: 1, nom: "Taxe exceptionnelle sur les rachats d'actions (2027)", src: 'c' },
-    { sec: 'Plan du 6 octobre 2026 : économies', lever: 'benlow', value: -12.2, start: 2027, ramp: 3, nom: 'Priorité nationale : prestations de solidarité réservées', src: 'c' },
-    { lever: 'benfam', value: -5.9, start: 2027, ramp: 3, nom: 'Priorité nationale : allocations familiales réservées aux foyers dont un parent est français', src: 'c' },
+    { custom: 1, canal: 'c_revfin', montant: 11.35, eff: c, start: 2027, end: 2027, ramp: 1, p27: 1, was: 'Taxe exceptionnelle sur les rachats d\'actions (2027)', nom: "Taxe exceptionnelle sur les rachats d'actions (2027, année pleine)", src: 'c' },
+    { sec: 'Plan du 6 octobre 2026 : économies', lever: 'benlow', value: -12.2, start: 2028, ramp: 3, was: 'Priorité nationale : prestations de solidarité réservées', nom: 'Priorité nationale : prestations de solidarité réservées (après révision constitutionnelle)', src: 'c' },
+    { lever: 'benfam', value: -5.9, start: 2028, ramp: 3, was: 'Priorité nationale : allocations familiales réservées aux foyers dont un parent est français', nom: 'Priorité nationale : allocations familiales réservées aux foyers dont un parent est français (après révision constitutionnelle)', src: 'c' },
     { lever: 'cotall', value: 1, start: 2027, ramp: 1, nom: "Taxe à l'embauche de salariés extra-européens", src: 'c' },
     { lever: 'gfonct', value: -9.9, start: 2027, ramp: 3, nom: 'Immigration : autres économies (solde du poste de 29 Md€)', src: 'c' },
-    { lever: 'eu', value: -19.5, start: 2027, ramp: 3, nom: 'Union européenne : baisse de la contribution (13,1 Md€) et autres économies', src: 'c' },
-    { lever: 'subv', value: -14.3, start: 2027, ramp: 2, nom: "Fin des soutiens aux renouvelables, aux certificats d'économie d'énergie et au biogaz", src: 'c' },
+    { lever: 'eu', value: -19.5, start: 2028, ramp: 3, was: 'Union européenne : baisse de la contribution (13,1 Md€) et autres économies', nom: 'Union européenne : baisse de la contribution (13,1 Md€) et autres économies (contribution 2027 déjà fixée)', src: 'c' },
+    { lever: 'subv', value: -5, start: 2029, ramp: 5, was: 'Fin des soutiens aux renouvelables, aux certificats d\'économie d\'énergie et au biogaz', wasV: -14.3, nom: "Renouvelables et biogaz : plus de nouveaux contrats de soutien. Annoncé : 14,3 Md€ ; les contrats en cours (15 à 20 ans) restent dus et les certificats d'économies d'énergie ne passent pas par le budget de l'État", src: 'm' },
     { lever: 'subv', value: -9.3, start: 2027, ramp: 2, nom: "Prix national de l'électricité", src: 'c' },
     { lever: 'subv', value: -9.2, start: 2027, ramp: 2, nom: 'Concessions, réseaux, autres (solde du poste énergie de 29 Md€)', src: 'c' },
     { lever: 'ipub', value: 3.8, start: 2027, ramp: 1, nom: 'Rénovation énergétique des logements', src: 'c' },
@@ -82,7 +83,8 @@ const rnProg = () => {
     { lever: 'dotct', value: -8.2, start: 2027, ramp: 1, nom: 'Effort demandé aux collectivités', src: 'c' },
     { lever: 'gfonct', value: -18.7, start: 2027, ramp: 2, nom: 'État et opérateurs : agences supprimées, immobilier, autres (solde du poste de 29 Md€)', src: 'c' },
     { lever: 'educ', value: 9, start: 2027, ramp: 5, nom: 'Recherche publique', src: 'c' },
-    { sec: 'Plan du 6 octobre 2026 : dépenses pour les ménages', lever: 'age', value: -2, chiffre: 9.5, start: 2027, ramp: 1, nom: 'Retraite à 62 ans, 60 ans pour les carrières longues, 42 annuités', src: 'c' },
+    { sec: 'Plan du 6 octobre 2026 : dépenses pour les ménages', lever: 'age', value: -0.75, chiffre: 9.5, start: 2027, ramp: 1, was: 'Retraite à 62 ans, 60 ans pour les carrières longues, 42 annuités', wasV: -2, nom: 'Retraite à 62 ans, 60 ans pour les carrières longues, 42 annuités : 9 mois de moins dès 2027 (âge gelé à 62 ans et 9 mois jusqu\'en 2028)', src: 'c' },
+    { lever: 'age', value: -1.25, start: 2029, ramp: 4, was: 'Retraite à 62 ans, 60 ans pour les carrières longues, 42 annuités', wasV: -2, nom: 'Retraite à 62 ans : écart porté à 2 ans d\'ici 2032, à mesure que l\'âge aurait dû monter', src: 'c' },
     { lever: 'benlow', value: 9.6, start: 2028, ramp: 4, nom: 'Minimum vieillesse, handicap, familles (solde du poste de 19,1 Md€)', src: 'c' },
     { sec: 'Hypothèses de la maquette', lever: 'ir', value: -12.2, start: 2027, ramp: 1, nom: 'Budget 2027 : hausses de prélèvements non reprises par le RN (moitié de 24,4 Md€)', src: 'e' },
     { lever: 'benfam', value: 12.2, start: 2027, ramp: 1, nom: 'Budget 2027 : économies sur les prestations non reprises par le RN (moitié de 24,4 Md€)', src: 'e' },
@@ -90,10 +92,10 @@ const rnProg = () => {
     { lever: 'migr', value: -100, start: 2028, ramp: 1, nom: "Baisse de l'immigration : solde migratoire réduit de 100 000 par an", src: 'e' }
   ] };
 };
-const PHILIPPE_DESC = "Extrapolation, pas un chiffrage officiel. Édouard Philippe n'a pas publié de chiffrage mesure par mesure. Il donne une cible (déficit ramené de plus de 5 % à 2 % du PIB en cinq ans) et une clé de partage de l'effort : moitié sur les dépenses sociales, un quart sur l'État et les collectivités, un quart attendu de la croissance. La maquette traduit cette clé en enveloppes : 3 points de PIB, soit 47 Md€ sur le social et 23,5 Md€ sur l'État et les collectivités. Elle y place d'abord les mesures annoncées, puis complète jusqu'au total par des lignes « solde de l'enveloppe ». Le quart attendu de la croissance n'est pas saisi : c'est au modèle de dire s'il arrive.";
+const PHILIPPE_DESC = "Extrapolation, pas un chiffrage officiel. Édouard Philippe n'a pas publié de chiffrage mesure par mesure. Il donne une cible (déficit ramené de plus de 5 % à 2 % du PIB en cinq ans) et une clé de partage de l'effort : moitié sur les dépenses sociales, un quart sur l'État et les collectivités, un quart attendu de la croissance. La maquette traduit cette clé en enveloppes : 3 points de PIB, soit 47 Md€ sur le social et 23,5 Md€ sur l'État et les collectivités. Elle y place d'abord les mesures annoncées, puis complète jusqu'au total par des lignes « solde de l'enveloppe ». Le quart attendu de la croissance n'est pas saisi : c'est au modèle de dire s'il arrive. Vérification du 18 novembre 2026 : 50 Md€ d'impôts de production et d'aides dès la première année, comme annoncé (« 250 milliards pour un quinquennat ») ; cela suppose de compenser vite les collectivités. 250 000 postes : un tiers des départs à la retraite fait plutôt 225 000 en cinq ans.";
 const philippeProg = () => ({ id: 'philippe', name: 'Philippe · Horizons (extrapolation)', desc: PHILIPPE_DESC, measures: [
-  { sec: 'Entreprises et travail', lever: 'prodtax', value: -50, start: 2027, ramp: 5, nom: 'Impôts de production : 50 Md€ de baisse sur cinq ans', src: 'c' },
-  { lever: 'subv', value: -50, start: 2027, ramp: 5, nom: 'Aides publiques aux entreprises : 50 Md€ supprimés en contrepartie', src: 'c' },
+  { sec: 'Entreprises et travail', lever: 'prodtax', value: -50, start: 2027, ramp: 1, was: 'Impôts de production : 50 Md€ de baisse sur cinq ans', nom: 'Impôts de production : 50 Md€ de baisse par an dès la première année (250 Md€ sur le quinquennat)', src: 'c' },
+  { lever: 'subv', value: -50, start: 2027, ramp: 1, was: 'Aides publiques aux entreprises : 50 Md€ supprimés en contrepartie', nom: 'Aides publiques aux entreprises : 50 Md€ supprimés en contrepartie, dès la première année', src: 'c' },
   { lever: 'hours', value: 1.5, start: 2028, ramp: 3, nom: 'Temps de travail fixé par accord d\'entreprise : deux heures de plus par semaine pour un quart environ des salariés', src: 'e' },
   { lever: 'cotsal', value: -2, start: 2028, ramp: 3, nom: 'Heures au-delà de 35 heures exonérées de cotisations salariales', src: 'e' },
   { lever: 'cotall', value: -1.5, start: 2028, ramp: 3, nom: 'Heures au-delà de la 37e exonérées de cotisations patronales', src: 'e' },
@@ -114,19 +116,19 @@ const philippeProg = () => ({ id: 'philippe', name: 'Philippe · Horizons (extra
   { lever: 'ipub', value: 2, start: 2028, ramp: 1, nom: 'Fonds d\'adaptation au changement climatique : 2 Md€ par an', src: 'c' },
   { sec: 'Hypothèse de la maquette', lever: 'migr', value: -60, start: 2028, ramp: 1, nom: 'Immigration légale réduite : solde migratoire en baisse de 60 000 par an', src: 'e' }
 ] });
-const LISNARD_DESC = "Extrapolation, pas un chiffrage officiel. Ossature : les annonces de David Lisnard, soit 200 Md€ d'économies par an en fin de mandat (80 Md€ dès la première année), dont 120 Md€ rendus aux actifs en baisse de cotisations, 40 Md€ en baisse d'impôts de production et 40 Md€ pour réduire le déficit. Il n'a pas détaillé les économies poste par poste : leur ventilation est celle de la maquette, d'après les postes qu'il cite (fonction publique, agences, collectivités, allocation sociale unique, aides aux entreprises, pensions au-dessus de 2 000 €). Le partage des 120 Md€ entre cotisations salariales et patronales est aussi une hypothèse.";
+const LISNARD_DESC = "Extrapolation, pas un chiffrage officiel. Ossature : les annonces de David Lisnard, soit 200 Md€ d'économies par an en fin de mandat (80 Md€ dès la première année), dont 120 Md€ rendus aux actifs en baisse de cotisations, 40 Md€ en baisse d'impôts de production et 40 Md€ pour réduire le déficit. Il n'a pas détaillé les économies poste par poste : leur ventilation est celle de la maquette, d'après les postes qu'il cite (fonction publique, agences, collectivités, allocation sociale unique, aides aux entreprises, pensions au-dessus de 2 000 €). Le partage des 120 Md€ entre cotisations salariales et patronales est aussi une hypothèse. Vérification du 18 novembre 2026 : économies et baisses de prélèvements montent sur cinq ans (80 Md€ en 2028, 200 Md€ en 2031), au lieu de trois. 80 Md€ en un an, c'est près du double des 44 Md€ visés par le plan Bayrou pour 2026 ; 400 000 postes en cinq ans, environ 60 % des départs à la retraite de fonctionnaires.";
 const lisnardProg = () => ({ id: 'lisnard', name: 'Lisnard · Nouvelle Énergie (extrapolation)', desc: LISNARD_DESC, measures: [
-  { sec: 'Baisses de prélèvements : 160 Md€', lever: 'cotsal', value: -90, start: 2027, ramp: 3, nom: 'Cotisations salariales : part des 120 Md€ rendus aux actifs', src: 'c' },
-  { lever: 'cotall', value: -30, start: 2027, ramp: 3, nom: 'Cotisations patronales entre 2 et 4 SMIC : part des 120 Md€ rendus aux actifs', src: 'c' },
-  { lever: 'prodtax', value: -40, start: 2027, ramp: 3, nom: 'Impôts de production : 40 Md€, en commençant par la C3S et la CVAE', src: 'c' },
+  { sec: 'Baisses de prélèvements : 160 Md€', lever: 'cotsal', value: -90, start: 2027, ramp: 5, nom: 'Cotisations salariales : part des 120 Md€ rendus aux actifs', src: 'c' },
+  { lever: 'cotall', value: -30, start: 2027, ramp: 5, nom: 'Cotisations patronales entre 2 et 4 SMIC : part des 120 Md€ rendus aux actifs', src: 'c' },
+  { lever: 'prodtax', value: -40, start: 2027, ramp: 5, nom: 'Impôts de production : 40 Md€, en commençant par la C3S et la CVAE', src: 'c' },
   { sec: 'Économies : 200 Md€, ventilation de la maquette', lever: 'gjobs', value: -400, start: 2027, ramp: 5, nom: 'Fonction publique : départs non remplacés, 400 000 postes en cinq ans', src: 'e' },
-  { lever: 'gfonct', value: -40, start: 2027, ramp: 3, nom: 'État recentré : agences, opérateurs, agences régionales de santé, fonctionnement', src: 'e' },
-  { lever: 'dotct', value: -15, start: 2027, ramp: 3, nom: 'Collectivités : départements et régions fusionnés en provinces', src: 'e' },
-  { lever: 'subv', value: -40, start: 2027, ramp: 3, nom: 'Aides aux entreprises supprimées, remplacées par les baisses de charges', src: 'e' },
-  { lever: 'benlow', value: -20, start: 2027, ramp: 3, nom: 'Allocation sociale unique plafonnée : minima et aides ciblées', src: 'e' },
-  { lever: 'benfam', value: -10, start: 2027, ramp: 3, nom: 'Allocation sociale unique plafonnée : aides au logement et prestations', src: 'e' },
-  { lever: 'sante', value: -30, start: 2027, ramp: 3, nom: 'Santé et hôpital', src: 'e' },
-  { lever: 'chom', value: -6, start: 2027, ramp: 3, nom: 'Assurance chômage', src: 'e' },
+  { lever: 'gfonct', value: -40, start: 2027, ramp: 5, nom: 'État recentré : agences, opérateurs, agences régionales de santé, fonctionnement', src: 'e' },
+  { lever: 'dotct', value: -15, start: 2027, ramp: 5, nom: 'Collectivités : départements et régions fusionnés en provinces', src: 'e' },
+  { lever: 'subv', value: -40, start: 2027, ramp: 5, nom: 'Aides aux entreprises supprimées, remplacées par les baisses de charges', src: 'e' },
+  { lever: 'benlow', value: -20, start: 2027, ramp: 5, nom: 'Allocation sociale unique plafonnée : minima et aides ciblées', src: 'e' },
+  { lever: 'benfam', value: -10, start: 2027, ramp: 5, nom: 'Allocation sociale unique plafonnée : aides au logement et prestations', src: 'e' },
+  { lever: 'sante', value: -30, start: 2027, ramp: 5, nom: 'Santé et hôpital', src: 'e' },
+  { lever: 'chom', value: -6, start: 2027, ramp: 5, nom: 'Assurance chômage', src: 'e' },
   { lever: 'pens', value: -4, start: 2028, ramp: 5, nom: 'Pensions au-dessus de 2 000 € par mois désindexées cinq ans (environ 17 Md€), pour amorcer la capitalisation', src: 'e' },
   { sec: 'Dépenses nouvelles et autres mesures', lever: 'educ', value: 6, start: 2028, ramp: 5, nom: 'Enseignants payés 20 % de plus en cinq ans', src: 'e' },
   { lever: 'ir', value: -3, start: 2028, ramp: 1, nom: 'Quotient familial déplafonné', src: 'e' },

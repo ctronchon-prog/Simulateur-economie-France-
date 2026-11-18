@@ -82,7 +82,7 @@ const defaultProgs = () => { const ex = PG.exampleProgs(); return [ex[2], ex[3],
 const defaultPilot = P => { const p = { from: {} }; E.PILOT.forEach(k => { p[k.id] = k.abs ? P[k.abs] : k.def; p.from[k.id] = 2028; }); return p; };
 const defaultState = () => {
   const P = E.defaultParams();
-  return { v: 6, progV: 5, tab: PAGE, horizon: 2030, shown: ['lfi', 'rn'], chartVar: 'gdpR', chartMode: 'niveau', band: true, tableView: false,
+  return { v: 6, progV: 6, tab: PAGE, horizon: 2030, shown: ['lfi', 'rn'], chartVar: 'gdpR', chartMode: 'niveau', band: true, tableView: false,
     detailTab: 'finances', detailScen: 'lfi', secMode: 'va', programmes: defaultProgs(), openProg: 'lfi', asideVar: 'gdpR',
     shocks: E.SHOCKS.map(s => ({ id: s.id, on: false, level: 1, year: 2028 })), pilot: defaultPilot(P), sanctions: false, params: P, mode: 'simple' };
 };
@@ -93,7 +93,14 @@ try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw
     if ((state.progV || 1) < 3) { state.chartVar = 'gdpR'; state.asideVar = 'gdpR'; state.progV = 3; }
     if (state.progV < 4) { if (Math.abs(state.params.smicEmp - 0.05) < 1e-9) state.params.smicEmp = 0.35; // réglage recalé le 17 novembre
       state.programmes.forEach(p => p.measures.forEach(m => { if (m.nom === 'SMIC à 1 700 € nets (+15 %)') m.nom = 'SMIC à 1 700 € nets (+15 % par rapport aux 1 478 € de juin 2026)'; })); state.progV = 4; }
-    if (state.progV < 5) { /* multiplicateur commun aux dixièmes, 17 novembre */ if (Math.abs(state.params.kappaS - 0.5) < 1e-9) state.params.kappaS = 0.8; state.progV = 5; } } } } catch (e) { }
+    if (state.progV < 5) { /* multiplicateur commun aux dixièmes, 17 novembre */ if (Math.abs(state.params.kappaS - 0.5) < 1e-9) state.params.kappaS = 0.8; state.progV = 5; }
+    if (state.progV < 6) { /* calendriers vérifiés, 18 novembre : une mesure d'origine (même nom, même montant) prend sa nouvelle forme ; une mesure modifiée par l'utilisateur reste telle quelle */
+      state.programmes.forEach(p => { if (!COVER_NAME[p.id] || !ORIGIN[p.id]) return; const def = ORIGIN[p.id](), val = m => m.value !== undefined ? m.value : m.montant;
+        if ((p.desc || '').indexOf('Extrapolation, pas un chiffrage officiel') === 0) p.desc = def.desc;
+        const out = []; p.measures.forEach(m => { const news = def.measures.filter(nd => (nd.was || nd.nom) === m.nom && (nd.wasV !== undefined ? nd.wasV : val(nd)) === val(m));
+          if (news.length) news.forEach(nd => { const c = JSON.parse(JSON.stringify(nd)); if (m.off) c.off = m.off; out.push(c); }); else out.push(m); });
+        p.measures = out; });
+      state.progV = 6; } } } } catch (e) { }
 state.tab = PAGE;
 function merge(def, s) {
   const o = Object.assign({}, def, s);

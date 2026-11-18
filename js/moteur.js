@@ -587,7 +587,7 @@ function phase(m, t) { // t : indice d'année
   const s = Math.max(1, (m.start || 2027) - 2026); if (t < s) return 0;
   if (m.end && YEARS[t] > m.end) return 0;
   const ramp = Math.max(1, m.ramp || 1); let f = Math.min(1, (t - s + 1) / ramp);
-  if (t === 1) f *= 0.5; // mesures applicables à partir de juillet 2027
+  if (t === 1 && !m.p27) f *= 0.5; // mesures applicables à partir de juillet 2027, sauf celles qui portent sur l'année entière (p27)
   return f;
 }
 function buildImpulses(P, B, prog, shocks, pilot, scen) {
