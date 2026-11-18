@@ -163,7 +163,8 @@ const PARAMS = [
   ['educTfp', 'Rendement de l\'éducation-recherche (% de productivité par Md€, à 10 ans)', 0.02, 0, 0.08, 0.005, 'Offre', 0, ''],
   ['ppbAdd', 'Pôle public bancaire : part réellement additionnelle des financements', 0.4, 0, 1, 0.05, 'Offre', 0, 'Le reste se substitue à des financements privés ou bute sur les capacités de production'],
   ['eti', 'Réaction des hauts revenus à l\'impôt (élasticité du revenu imposable)', 0, 0, 0.8, 0.05, 'Finances publiques', 0, 'Au-delà de 100 000 € par an. 0 : calcul statique, comme les chiffrages des partis ; les études retiennent 0,2 à 0,5'],
-  ['elasIR', 'Élasticité de l\'impôt sur le revenu', 1.5, 1, 2.2, 0.05, 'Finances publiques', 0, ''],
+  ['elasIR', 'Élasticité de l\'impôt sur le revenu à la hausse réelle des revenus', 1.5, 1, 2.2, 0.05, 'Finances publiques', 0, 'Progressivité : quand un revenu monte plus vite que les prix, une partie passe dans les tranches supérieures'],
+  ['irIdx', 'Barème de l\'impôt sur le revenu revalorisé sur l\'inflation', 1, 0, 1, 1, 'Finances publiques', 0, 'Case cochée : les seuils suivent les prix, comme le vote en général chaque loi de finances ; un revenu qui ne monte que par l\'inflation paie le même taux. Décochée : barème gelé, l\'inflation fait monter l\'impôt plus vite que les revenus (fiscalité à froid)', 1],
   ['elasIS', 'Élasticité de l\'impôt sur les sociétés aux profits', 1.6, 0.8, 3, 0.1, 'Finances publiques', 0, ''],
   ['benPerU', 'Coût public par chômeur supplémentaire (k€/an)', 13.5, 5, 25, 0.5, 'Finances publiques', 0, ''],
   ['pessYield', 'Scénario pessimiste : part obtenue des recettes et économies', 0.75, 0.3, 1, 0.05, 'Fourchettes', 1, ''],
@@ -712,7 +713,7 @@ function simulate(P, B, I, opt) {
     const dG = I.G[t], dIg = I.Ig[t];
     const gjobs = I.gjobs[t];
     const ixs = Math.max(0, Math.min(1, I.idxw[t] / 100)), ix = P.idxW + (1 - P.idxW) * ixs, ix2 = P.idxW2 * (1 - ixs);
-    const cDn = new Array(10).fill(0); let cOth = 0;
+    const cDn = new Array(10).fill(0), dIRd = new Array(10).fill(0); let cOth = 0;
     const jdTarget = I.jobs[t]; const jd = S.jd + 0.45 * (jdTarget - S.jd);
     // âge de la retraite : la plupart des personnes concernées gardent (ou quittent) un emploi. La lecture offre les absorbe déjà ; en lecture demande, l'effet direct s'efface à mesure que les entreprises ajustent leurs embauches
     const keepPct = S.keep * (1 - lam * P.ageFade) + lam * P.ageKeep * (I.lfsA[t] - I.lfsA[t - 1]), keptK = keepPct / 100 * B.LF[t];
@@ -726,7 +727,7 @@ function simulate(P, B, I, opt) {
     const svH = cr * (rH / 100 * DhB + D.iPriv0 / 100 * S.DhDev), svF = cr * (rF / 100 * DfB + D.iPriv0 / 100 * S.DfDev);
     const crC = (0.3 * P.credDem * aH - P.credServ * svH) / B.Pgdp[t], crIh = 0.7 * P.credDem * aH / B.Pgdp[t], crIe = (P.credDem * aF - P.credServ * svF) / B.Pgdp[t];
     const ystarPre = 0.33 * S.k + 0.67 * (lfs - nairu + hrs) + tfp + P.kpubElas * S.kpub + S.hyst; let unf = 0;
-    let y = S.y, ym = S.ym, c = S.c, ie = S.ie, ih = S.ih, x = S.x, e = S.e, w = S.w, p = S.p, pht = S.pht, dpi = 0, dw = 0, du = 0, dE = 0, margin = 0, eq = 0, dM = 0, dX = 0, dIe = 0, dIh = 0, hhD = [], rdbrTot = 0, dWages = 0, dPens = 0, dBen = 0, dCap = 0, dMixed = 0, dIR = 0, dCSG = 0, ePrivK = 0, lfK = 0, MSdev = 0, comp = 0, ystarNow = S.ystar, rdbA = 0, rdbR = 0, pD = [], ulcNow = 0;
+    let y = S.y, ym = S.ym, c = S.c, ie = S.ie, ih = S.ih, x = S.x, e = S.e, w = S.w, p = S.p, pht = S.pht, dpi = 0, dw = 0, du = 0, dE = 0, margin = 0, eq = 0, dM = 0, dX = 0, dIe = 0, dIh = 0, hhD = [], rdbrTot = 0, dWages = 0, dPens = 0, dBen = 0, dCap = 0, dMixed = 0, dIR = 0, dIRA = 0, dIRR = 0, dCSG = 0, ePrivK = 0, lfK = 0, MSdev = 0, comp = 0, ystarNow = S.ystar, rdbA = 0, rdbR = 0, pD = [], ulcNow = 0;
     for (let it = 0; it < 80; it++) {
       // Emploi
       const eStar = ym - tfp * (1 - P.supplyDirect * 0.5) - P.rttShare * hrs - P.sigL * (1 - P.demSigL * lam) * (w - pht - tfp - hrs);
@@ -761,13 +762,23 @@ function simulate(P, B, I, opt) {
       dBen = dBenIdx + dBenU;
       dMixed = D.Mixed * nom * (ym + pht) / 100;
       dCap = D.CapInc * nom * 0.7 * (y + pht) / 100 + 0.15 * lend * 0.01 * 1500 * nom * 0.3;
-      const incDev = (dWages + dPens + dMixed + 0.5 * dCap) / ((D.MSpriv + D.MSpub) * D.netfac + D.Pens + D.Mixed + 0.5 * D.CapInc) / nom * 100;
-      dIR = B.recI.ir[t] * P.elasIR * incDev / 100;
+      // Impôt sur le revenu : progressivité (élasticité elasIR) sur la hausse réelle des revenus ; sur la part due aux prix, 1 si le barème est revalorisé, elasIR s'il est gelé.
+      // Calculé dixième par dixième, puis pour les actifs et les retraités, selon la hausse du revenu de chacun.
+      const eIRp = P.irIdx ? 1 : P.elasIR, irOf = (share, dev) => B.recI.ir[t] * share * (P.elasIR * (dev - p) + eIRp * p) / 100;
+      const Wb = (D.MSpriv + D.MSpub) * D.netfac * nom, Mb = D.Mixed * nom, Pb = D.Pens * nom, Kb = 0.5 * D.CapInc * nom;
+      for (let d = 0; d < 10; d++) {
+        const num = dc.wages[d] * dWrate + dc.jobs[d] * dWemp + dc.wages[d] * dMixed + dc.pens[d] * dPens + 0.5 * dc.cap[d] * dCap;
+        const den = dc.wages[d] * (Wb + Mb) + dc.pens[d] * Pb + dc.cap[d] * Kb;
+        dIRd[d] = irOf(dc.ir[d], den > 0 ? num / den * 100 : 0);
+      }
+      dIR = sum(dIRd);
+      const irA0 = irOf(0.78, (dWages + dMixed + 0.55 * 0.5 * dCap) / (Wb + Mb + 0.55 * Kb) * 100), irR0 = irOf(0.22, (dPens + 0.45 * 0.5 * dCap) / (Pb + 0.45 * Kb) * 100);
+      dIRA = irA0 + 0.78 * (dIR - irA0 - irR0); dIRR = irR0 + 0.22 * (dIR - irA0 - irR0);
       dCSG = 0.092 * (dMSp + dMSg) + 0.083 * dPens + 0.172 * 0.5 * dCap + 0.092 * dMixed;
       rdbrTot = 0; let cInc = 0; const pEc = S.pEc + dpE, cgr = Cb / B.C[t - 1];
       for (let d = 0; d < 10; d++) {
         const base = D.RDB * nom * dc.rdb[d];
-        const dn = dc.wages[d] * dWrate + dc.jobs[d] * (dWemp + dBenU) + dc.pens[d] * dPens + dc.ben[d] * dBenIdx + dc.wages[d] * dMixed + dc.cap[d] * dCap - dc.ir[d] * dIR - dc.csg[d] * dCSG + I.hh[d][t];
+        const dn = dc.wages[d] * dWrate + dc.jobs[d] * (dWemp + dBenU) + dc.pens[d] * dPens + dc.ben[d] * dBenIdx + dc.wages[d] * dMixed + dc.cap[d] * dCap - dIRd[d] - dc.csg[d] * dCSG + I.hh[d][t];
         pD[d] = p + (dc.tiltE[d] - 1) * pEc;
         const real = ((base + dn) / (1 + pD[d] / 100) - base) / nom; // Md€ 2026 réels
         hhD[d] = real / (D.RDB * dc.rdb[d]) * 100; rdbrTot += real;
@@ -780,8 +791,8 @@ function simulate(P, B, I, opt) {
       }
       const actBase = (D.MSpriv + D.MSpub) * D.netfac + D.Mixed + 0.85 * D.Ben + 0.55 * D.CapInc - 0.78 * D.R0.ir - 0.76 * D.R0.csg;
       const retBase = D.Pens + 0.15 * D.Ben + 0.45 * D.CapInc - 0.22 * D.R0.ir - 0.24 * D.R0.csg;
-      const dA = dWages + dMixed + 0.85 * dBen + 0.55 * dCap - 0.78 * dIR - (dCSG - 0.083 * dPens) + I.hhA[t];
-      const dRt = dPens + 0.15 * dBen + 0.45 * dCap - 0.22 * dIR - 0.083 * dPens + I.hhR[t];
+      const dA = dWages + dMixed + 0.85 * dBen + 0.55 * dCap - dIRA - (dCSG - 0.083 * dPens) + I.hhA[t];
+      const dRt = dPens + 0.15 * dBen + 0.45 * dCap - dIRR - 0.083 * dPens + I.hhR[t];
       rdbA = ((actBase * nom + dA) / (1 + p / 100) / (actBase * nom) - 1) * 100; rdbR = ((retBase * nom + dRt) / (1 + (p + 0.08 * pEc) / 100) / (retBase * nom) - 1) * 100;
       // Consommation
       const core = dpi - dpE - dpInd; const rr = 0.5 * (lend - 0.3 * core) + 0.5 * S.rr;
