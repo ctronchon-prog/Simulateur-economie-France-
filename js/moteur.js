@@ -164,7 +164,7 @@ const PARAMS = [
   ['ppbAdd', 'Pôle public bancaire : part réellement additionnelle des financements', 0.4, 0, 1, 0.05, 'Offre', 0, 'Le reste se substitue à des financements privés ou bute sur les capacités de production'],
   ['eti', 'Réaction des hauts revenus à l\'impôt (élasticité du revenu imposable)', 0, 0, 0.8, 0.05, 'Finances publiques', 0, 'Au-delà de 100 000 € par an. 0 : calcul statique, comme les chiffrages des partis ; les études retiennent 0,2 à 0,5'],
   ['elasIR', 'Élasticité de l\'impôt sur le revenu à la hausse réelle des revenus', 1.5, 1, 2.2, 0.05, 'Finances publiques', 0, 'Progressivité : quand un revenu monte plus vite que les prix, une partie passe dans les tranches supérieures'],
-  ['irIdx', 'Barème de l\'impôt sur le revenu revalorisé sur l\'inflation', 1, 0, 1, 1, 'Finances publiques', 0, 'Case cochée : les seuils suivent les prix, comme le vote en général chaque loi de finances ; un revenu qui ne monte que par l\'inflation paie le même taux. Décochée : barème gelé, l\'inflation fait monter l\'impôt plus vite que les revenus (fiscalité à froid)', 1],
+  ['irIdx', 'Barèmes revalorisés sur l\'inflation (impôt sur le revenu, barèmes des programmes)', 1, 0, 1, 1, 'Finances publiques', 0, 'Case cochée : les seuils suivent les prix, comme le vote en général chaque loi de finances ; un revenu qui ne monte que par l\'inflation paie le même taux. Décochée : barèmes gelés, l\'inflation fait monter l\'impôt plus vite que les revenus (fiscalité à froid)', 1],
   ['elasIS', 'Élasticité de l\'impôt sur les sociétés aux profits', 1.6, 0.8, 3, 0.1, 'Finances publiques', 0, ''],
   ['benPerU', 'Coût public par chômeur supplémentaire (k€/an)', 13.5, 5, 25, 0.5, 'Finances publiques', 0, ''],
   ['pessYield', 'Scénario pessimiste : part obtenue des recettes et économies', 0.75, 0.3, 1, 0.05, 'Fourchettes', 1, ''],
@@ -299,9 +299,10 @@ function baseline(P) {
 /* ---------- Accumulateur d'impulsions ---------- */
 const CH = ['G', 'Ig', 'pInd', 'pE', 'firmMargin', 'ucost', 'ieff', 'smic', 'lfs', 'tfp', 'nairu', 'jobs', 'gjobs', 'wd', 'pen', 'eur', 'spread', 'cspread', 'eq', 'cshock', 'ieshock', 'ihshock', 'xshock', 'kdes', 'ecb', 'conf', 'tariff', 'emp', 'wshock', 'defDem', 'tour', 'agri', 'tech', 'attr', 'isAmt', 'isGe', 'prodAmt', 'cotLowAmt', 'eduCum', 'mImp', 'idxw', 'hrs', 'csave', 'lfsA', 'Gw', 'ppbI', 'ppbD', 'wDE', 'wIT', 'wES', 'wUS', 'wCN'];
 function newImp() {
-  const I = { hh: D.dec.rdb.map(() => Z()), hhA: Z(), hhR: Z(), rev: {}, spend: {}, sub: { etat: Z(), ct: Z(), secu: Z() }, br: {} };
+  const I = { hh: D.dec.rdb.map(() => Z()), hhA: Z(), hhR: Z(), bar: {}, rev: {}, spend: {}, sub: { etat: Z(), ct: Z(), secu: Z() }, br: {} };
   Object.keys(D.R0).forEach(k => I.rev[k] = Z()); Object.keys(D.S0).forEach(k => I.spend[k] = Z());
   BRANCHES.forEach(b => I.br[b.id] = Z()); CH.forEach(k => I[k] = Z());
+  ['irR', 'irH', 'irSR', 'irSH', 'csR', 'csH', 'csSR', 'csSH'].forEach(k => I.bar[k] = D.dec.rdb.map(() => Z())); ['irAct', 'irTot', 'csAct', 'csTot'].forEach(k => I.bar[k] = Z());
   return I;
 }
 function acc(I, t) {
@@ -425,10 +426,12 @@ const MICRO = (function () {
   const bar = (x, B) => { let t = 0; for (let i = 0; i < B.length; i++) { const lo = B[i][0], hi = i + 1 < B.length ? B[i + 1][0] : Infinity; if (x > lo) t += (Math.min(x, hi) - lo) * B[i][1] / 100; else break; } return t; };
   const marg = (x, B) => { let r = 0; for (let i = 0; i < B.length; i++) if (x >= B[i][0]) r = B[i][1]; return r / 100; };
   const IR_NOW = [[0, 0], [11600, 11], [29579, 30], [84577, 41], [181917, 45]]; // barème 2026 (revenus 2025), par part
-  const IR_LFI = [[0, 1], [10292, 5], [15438, 10], [20584, 15], [27789, 20], [30876, 25], [33964, 30], [38081, 35], [44256, 40], [61752, 45], [102921, 50], [144089, 55], [267594, 60], [411683, 90]];
+  const IR_LFI21 = [[0, 1], [10292, 5], [15438, 10], [20584, 15], [27789, 20], [30876, 25], [33964, 30], [38081, 35], [44256, 40], [61752, 45], [102921, 50], [144089, 55], [267594, 60], [411683, 90]]; // amendement LFI de 2021 (1 % dès le premier euro, 90 % au-delà de 411 683 €)
+  const IR_LFI = [[0, 0], [10434, 5], [15639, 10], [20856, 15], [28152, 20], [32290, 25], [35415, 27.5], [38836, 32.5], [44849, 40], [62579, 45], [104291, 50], [146015, 55], [261173, 65], [400000, 70]]; // amendement LFI n° 1433 au budget 2026 (9 janvier 2026), revenus 2025, par part
   // Barème de CSG : le découpage en 14 tranches n'est pas publié. Celui-ci est construit par la maquette pour respecter les trois repères affichés :
-  // baisse pour tout salarié sous 4 000 € nets par mois, hausse progressive au-delà, rendement d'ensemble avec l'impôt sur le revenu proche de 5,5 Md€.
-  const CSG_LFI = [[0, 4], [12000, 7.8], [18000, 9], [24000, 9.8], [30000, 10.6], [36000, 11.2], [48000, 11.7], [61000, 12.2], [80000, 12.6], [100000, 13.1], [130000, 13.5], [180000, 13.8], [260000, 14.2], [400000, 14.5]];
+  // baisse pour tout salarié sous 4 000 € nets par mois, hausse progressive au-delà, rendement d'ensemble avec l'impôt sur le revenu proche de 5,5 Md€ (chiffre avancé par LFI en 2024).
+  const CSG_LFI21 = [[0, 4], [12000, 7.8], [18000, 9], [24000, 9.8], [30000, 10.6], [36000, 11.2], [48000, 11.7], [61000, 12.2], [80000, 12.6], [100000, 13.1], [130000, 13.5], [180000, 13.8], [260000, 14.2], [400000, 14.5]]; // version calée sur le barème d'impôt sur le revenu de 2021
+  const CSG_LFI = [[0, 4], [12000, 7.8], [18000, 9], [24000, 9.8], [30000, 10.6], [36000, 11.2], [48000, 11.7], [61000, 19.3], [80000, 19.7], [100000, 20.2], [130000, 20.6], [180000, 20.9], [260000, 21.3], [400000, 21.6]]; // recalé le 20 novembre 2026 sur le barème d'impôt sur le revenu de 2026 : +7,1 points au-delà de 61 000 € bruts par an
   const CSG_NOW = 0.9825 * 0.097; // CSG et CRDS sur les revenus d'activité, en part du brut
   const taxable = y => y - Math.min(0.1 * y, 14426);
   const decote = t => t < 1964 ? Math.max(0, t - Math.max(0, 889 - 0.4525 * t)) : t; // conservée tant que la première tranche reste à 0 %
@@ -457,10 +460,14 @@ const MICRO = (function () {
     const dIRd = new Array(10).fill(0), dCSGd = new Array(10).fill(0);
     ALL.forEach(c => { const r = one(c.pop, c.y, true), di = c.w * (r[1] - r[0]) / 1000, dc2 = c.w * (r[3] - r[2]) / 1000; c.dw.forEach(x => { dIRd[x[0]] += di * x[1]; dCSGd[x[0]] += dc2 * x[1]; }); n += c.w; if (r[1] + r[3] < r[0] + r[2] - 1) win += c.w; else if (r[1] + r[3] > r[0] + r[2] + 1) lose += c.w; if (c.pop === 'W') { aIR += di; aCSG += dc2; } });
     const dIR = sum(dIRd), dCSG = sum(dCSGd);
+    // pentes : ce que le gain change quand tous les revenus montent de 1 %, seuils inchangés (Md€ de 2026 par point)
+    const sIRd = new Array(10).fill(0), sCSGd = new Array(10).fill(0);
+    ALL.forEach(c => { const r = one(c.pop, c.y * 1.01, true), di = c.w * (r[1] - r[0]) / 1000, dc2 = c.w * (r[3] - r[2]) / 1000; c.dw.forEach(x => { sIRd[x[0]] += di * x[1]; sCSGd[x[0]] += dc2 * x[1]; }); });
+    for (let d = 0; d < 10; d++) { sIRd[d] -= dIRd[d]; sCSGd[d] -= dCSGd[d]; }
     const gain = m => { const r = one('W', m * 12, false); return (r[0] + r[2]) - (r[1] + r[3]); };
     let cross = null; if (gain(1500) > 0) { let lo = 1500, hi = 40000; if (gain(hi) < 0) { for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (gain(m) > 0) lo = m; else hi = m; } cross = lo; } }
     const cas = [1478, 2000, 2500, 3000, 4000, 5000, 8000, 15000].map(m => ({ net: m, gain: gain(m) }));
-    return cache[key] = { dIR, dCSG, dIRd, dCSGd, actIR: dIR ? aIR / dIR : 0.8, actCSG: dCSG ? aCSG / dCSG : 1, win: win / n * 100, lose: lose / n * 100, cross, cas };
+    return cache[key] = { dIR, dCSG, dIRd, dCSGd, sIRd, sCSGd, actIR: dIR ? aIR / dIR : 0.8, actCSG: dCSG ? aCSG / dCSG : 1, win: win / n * 100, lose: lose / n * 100, cross, cas };
   }
   /* Assiettes de revenus : seuils en euros nets par mois */
   function revBase(pop, lo, hi, margOnly) {
@@ -482,7 +489,7 @@ const MICRO = (function () {
     const base = margOnly ? Math.max(0, (A[1] - (lo || 0) * A[0] * unit) - (hi ? Bv[1] - hi * Bv[0] * unit : 0)) : A[1] - Bv[1];
     return { n, base };
   }
-  return { W, R, ALL, bar, bareme, revBase, wealthBase: (lo, hi, m) => tableBase(WEALTH, lo, hi, m, 1000), succBase: (lo, hi, m) => tableBase(SUCC, lo, hi, m, 0.001), IR_NOW, IR_LFI, CSG_LFI, K_IR };
+  return { W, R, ALL, bar, bareme, revBase, wealthBase: (lo, hi, m) => tableBase(WEALTH, lo, hi, m, 1000), succBase: (lo, hi, m) => tableBase(SUCC, lo, hi, m, 0.001), IR_NOW, IR_LFI, IR_LFI21, CSG_LFI, CSG_LFI21, K_IR };
 })();
 
 /* ---------- Mesures définies par assiette ----------
@@ -603,7 +610,14 @@ function buildImpulses(P, B, prog, shocks, pilot, scen) {
       const info = MICRO.bareme(m.bar, P.eti), g = v => v > 0 ? v * F.good : v, ir = info.dIRd.map(g), cs = info.dCSGd.map(g), irE = F.cpt ? info.dIRd : ir, csE = F.cpt ? info.dCSGd : cs, sE = F.cpt ? (sum(info.dIRd) + sum(info.dCSGd)) : 0;
       for (let t = 1; t < N; t++) { const f = phase(m, t); if (!f) continue; const k = f * B.Yn[t] / B.Yn[1], sIR = sum(ir) * k, sCS = sum(cs) * k, A = acc(I, t);
         A.rev('ir', sIR); A.rev('csg', sCS, { secu: 1 }, { mal: .45, fam: .10, vie: .15, aut: .12, une: .11 });
-        const eIR = sum(irE) * k, eCS = sum(csE) * k; A.hhv(irE, -k, -eIR * info.actIR, -eIR * (1 - info.actIR)); A.hhv(csE, -k, -eCS * info.actCSG, -eCS * (1 - info.actCSG)); }
+        const eIR = sum(irE) * k, eCS = sum(csE) * k; A.hhv(irE, -k, -eIR * info.actIR, -eIR * (1 - info.actIR)); A.hhv(csE, -k, -eCS * info.actCSG, -eCS * (1 - info.actCSG));
+        // pour faire suivre aux gains les revenus du programme (voir simulate)
+        const Bq = I.bar, fr = (a, b0, d) => b0[d] ? a[d] / b0[d] : 1;
+        for (let d = 0; d < 10; d++) {
+          Bq.irR[d][t] += k * ir[d]; Bq.irH[d][t] += k * irE[d]; Bq.irSR[d][t] += k * info.sIRd[d] * fr(ir, info.dIRd, d); Bq.irSH[d][t] += k * info.sIRd[d] * fr(irE, info.dIRd, d);
+          Bq.csR[d][t] += k * cs[d]; Bq.csH[d][t] += k * csE[d]; Bq.csSR[d][t] += k * info.sCSGd[d] * fr(cs, info.dCSGd, d); Bq.csSH[d][t] += k * info.sCSGd[d] * fr(csE, info.dCSGd, d);
+        }
+        Bq.irAct[t] += eIR * info.actIR; Bq.irTot[t] += eIR; Bq.csAct[t] += eCS * info.actCSG; Bq.csTot[t] += eCS; }
       return;
     }
     if (m.ass) {
@@ -713,7 +727,7 @@ function simulate(P, B, I, opt) {
     const dG = I.G[t], dIg = I.Ig[t];
     const gjobs = I.gjobs[t];
     const ixs = Math.max(0, Math.min(1, I.idxw[t] / 100)), ix = P.idxW + (1 - P.idxW) * ixs, ix2 = P.idxW2 * (1 - ixs);
-    const cDn = new Array(10).fill(0), dIRd = new Array(10).fill(0); let cOth = 0;
+    const cDn = new Array(10).fill(0), dIRd = new Array(10).fill(0), devD = new Array(10).fill(0), bIRd = new Array(10).fill(0), bCSd = new Array(10).fill(0); let cOth = 0, bIRrev = 0, bCSrev = 0, bA = 0, bR = 0;
     const jdTarget = I.jobs[t]; const jd = S.jd + 0.45 * (jdTarget - S.jd);
     // âge de la retraite : la plupart des personnes concernées gardent (ou quittent) un emploi. La lecture offre les absorbe déjà ; en lecture demande, l'effet direct s'efface à mesure que les entreprises ajustent leurs embauches
     const keepPct = S.keep * (1 - lam * P.ageFade) + lam * P.ageKeep * (I.lfsA[t] - I.lfsA[t - 1]), keptK = keepPct / 100 * B.LF[t];
@@ -769,16 +783,23 @@ function simulate(P, B, I, opt) {
       for (let d = 0; d < 10; d++) {
         const num = dc.wages[d] * dWrate + dc.jobs[d] * dWemp + dc.wages[d] * dMixed + dc.pens[d] * dPens + 0.5 * dc.cap[d] * dCap;
         const den = dc.wages[d] * (Wb + Mb) + dc.pens[d] * Pb + dc.cap[d] * Kb;
-        dIRd[d] = irOf(dc.ir[d], den > 0 ? num / den * 100 : 0);
+        devD[d] = den > 0 ? num / den * 100 : 0;
+        dIRd[d] = irOf(dc.ir[d], devD[d]);
       }
       dIR = sum(dIRd);
       const irA0 = irOf(0.78, (dWages + dMixed + 0.55 * 0.5 * dCap) / (Wb + Mb + 0.55 * Kb) * 100), irR0 = irOf(0.22, (dPens + 0.45 * 0.5 * dCap) / (Pb + 0.45 * Kb) * 100);
       dIRA = irA0 + 0.78 * (dIR - irA0 - irR0); dIRR = irR0 + 0.22 * (dIR - irA0 - irR0);
+      // barèmes des programmes : leur gain suit les revenus du programme (en écart à la référence), comme l'impôt de la référence
+      const Bq = I.bar, bx = (g, sl, d) => sl[d][t] * (devD[d] - p) + (P.irIdx ? g[d][t] / 100 : sl[d][t]) * p;
+      bIRrev = 0; bCSrev = 0; let bIRh = 0, bCSh = 0;
+      for (let d = 0; d < 10; d++) { bIRrev += bx(Bq.irR, Bq.irSR, d); bCSrev += bx(Bq.csR, Bq.csSR, d); bIRd[d] = bx(Bq.irH, Bq.irSH, d); bCSd[d] = bx(Bq.csH, Bq.csSH, d); bIRh += bIRd[d]; bCSh += bCSd[d]; }
+      const shIR = Bq.irTot[t] ? Bq.irAct[t] / Bq.irTot[t] : 0.78, shCS = Bq.csTot[t] ? Bq.csAct[t] / Bq.csTot[t] : 1;
+      bA = bIRh * shIR + bCSh * shCS; bR = bIRh * (1 - shIR) + bCSh * (1 - shCS);
       dCSG = 0.092 * (dMSp + dMSg) + 0.083 * dPens + 0.172 * 0.5 * dCap + 0.092 * dMixed;
       rdbrTot = 0; let cInc = 0; const pEc = S.pEc + dpE, cgr = Cb / B.C[t - 1];
       for (let d = 0; d < 10; d++) {
         const base = D.RDB * nom * dc.rdb[d];
-        const dn = dc.wages[d] * dWrate + dc.jobs[d] * (dWemp + dBenU) + dc.pens[d] * dPens + dc.ben[d] * dBenIdx + dc.wages[d] * dMixed + dc.cap[d] * dCap - dIRd[d] - dc.csg[d] * dCSG + I.hh[d][t];
+        const dn = dc.wages[d] * dWrate + dc.jobs[d] * (dWemp + dBenU) + dc.pens[d] * dPens + dc.ben[d] * dBenIdx + dc.wages[d] * dMixed + dc.cap[d] * dCap - dIRd[d] - bIRd[d] - bCSd[d] - dc.csg[d] * dCSG + I.hh[d][t];
         pD[d] = p + (dc.tiltE[d] - 1) * pEc;
         const real = ((base + dn) / (1 + pD[d] / 100) - base) / nom; // Md€ 2026 réels
         hhD[d] = real / (D.RDB * dc.rdb[d]) * 100; rdbrTot += real;
@@ -791,8 +812,8 @@ function simulate(P, B, I, opt) {
       }
       const actBase = (D.MSpriv + D.MSpub) * D.netfac + D.Mixed + 0.85 * D.Ben + 0.55 * D.CapInc - 0.78 * D.R0.ir - 0.76 * D.R0.csg;
       const retBase = D.Pens + 0.15 * D.Ben + 0.45 * D.CapInc - 0.22 * D.R0.ir - 0.24 * D.R0.csg;
-      const dA = dWages + dMixed + 0.85 * dBen + 0.55 * dCap - dIRA - (dCSG - 0.083 * dPens) + I.hhA[t];
-      const dRt = dPens + 0.15 * dBen + 0.45 * dCap - dIRR - 0.083 * dPens + I.hhR[t];
+      const dA = dWages + dMixed + 0.85 * dBen + 0.55 * dCap - dIRA - (dCSG - 0.083 * dPens) - bA + I.hhA[t];
+      const dRt = dPens + 0.15 * dBen + 0.45 * dCap - dIRR - 0.083 * dPens - bR + I.hhR[t];
       rdbA = ((actBase * nom + dA) / (1 + p / 100) / (actBase * nom) - 1) * 100; rdbR = ((retBase * nom + dRt) / (1 + (p + 0.08 * pEc) / 100) / (retBase * nom) - 1) * 100;
       // Consommation
       const core = dpi - dpE - dpInd; const rr = 0.5 * (lend - 0.3 * core) + 0.5 * S.rr;
@@ -828,7 +849,7 @@ function simulate(P, B, I, opt) {
     const ebe = margin / D.margin0 * 100 + ym + pht;
     const rv = {
       tva: I.rev.tva[t] + B.recI.tva[t] * (0.85 * cPct + pht + 0.1 * ih) / 100,
-      ir: I.rev.ir[t] + dIR, csg: I.rev.csg[t] + dCSG,
+      ir: I.rev.ir[t] + dIR + bIRrev, csg: I.rev.csg[t] + dCSG + bCSrev,
       cot: I.rev.cot[t] + B.recI.cot[t] * MSdev / 100,
       is: I.rev.is[t] + B.recI.is[t] * P.elasIS * (0.5 * ebe + 0.5 * S.ebe) / 100,
       prod: I.rev.prod[t] + B.recI.prod[t] * (y + pht) / 100,
